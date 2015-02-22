@@ -1,6 +1,6 @@
 import os,json,logging,websocket,requests,time,thread
 
-logging.basicConfig(level=logging.WARN)
+logging.basicConfig(level=logging.INFO)
 log = logging.getLogger('slacksocket')
 
 slackurl = { 'rtm'   : 'https://slack.com/api/rtm.start',
@@ -90,9 +90,9 @@ class SlackSocket(object):
         self.events = []
         self.token = slacktoken
         self.translate = translate
-        self.thread = thread.start_new_thread(self.start,())
+        self.thread = thread.start_new_thread(self.open,())
 
-    def start(self):
+    def open(self):
         ws = websocket.WebSocketApp(self._get_websocket_url(),
                                     on_message = self._event_handler,
                                     on_error   = self._error_handler,
@@ -175,6 +175,5 @@ class SlackSocket(object):
     def _error_handler(self,ws,error):
         log.critical('websocket error:\n %s' % error)
 
-    def _exit_handler(ws):
-        #TODO: attempt websocket reconnection
-        raise Exception('websocket closed!')
+    def _exit_handler(self,ws):
+        self.thread = thread.start_new_thread(self.open,())
