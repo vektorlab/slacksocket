@@ -1,0 +1,4 @@
+site_name: slacksocket Documenation
+site_url: slacksocket.readthedocs.org
+repo_url: https://github.com/bcicen/slacksocket
+theme: readthedocs
