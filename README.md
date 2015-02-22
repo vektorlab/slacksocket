@@ -2,6 +2,12 @@
 
 Slacksocket is a Python interface to the Slack Real Time Messaging(RTM) API
 
+# Install
+
+```bash
+pip install slacksocket
+```
+
 # Usage
 
 ```python
