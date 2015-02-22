@@ -1,5 +1,7 @@
 # Slacksocket
 
+[![Documentation Status](https://readthedocs.org/projects/slacksocket/badge/?version=latest)](https://readthedocs.org/projects/slacksocket/?badge=latest)
+
 Slacksocket is a Python interface to the Slack Real Time Messaging(RTM) API
 
 # Install
