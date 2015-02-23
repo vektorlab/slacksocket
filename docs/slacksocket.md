@@ -1,4 +1,4 @@
-# SlackSocket
+# SlackSocket API
 
 To instantiate a `SlackSocket` class that will setup an RTM websocket:
 
@@ -17,5 +17,9 @@ s = SlackSocket('<slack-token>')
 ## get_event
 
 Return event object in the order received or block until an event is received and return it.
+
+**Params**:
+
+* type (str): A slack event type to filter by. Default 'all' returns all slack events. See https://api.slack.com/events for a listing of valid event types.
 
 **Returns** (obj): SlackEvent object
