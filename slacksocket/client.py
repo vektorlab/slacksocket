@@ -1,10 +1,64 @@
 import os,json,logging,websocket,requests,time,thread
 
-logging.basicConfig(level=logging.WARN)
+logging.basicConfig(level=logging.INFO)
 log = logging.getLogger('slacksocket')
 
 slackurl = { 'rtm'   : 'https://slack.com/api/rtm.start',
              'users' : 'https://slack.com/api/users.list' }
+
+#TODO: add event_type groups for all channel events, all group events, etc.
+event_types = [ 'hello',
+        'message',
+        'channel_marked',
+        'channel_created',
+        'channel_joined',
+        'channel_left',
+        'channel_deleted',
+        'channel_rename',
+        'channel_archive',
+        'channel_unarchive',
+        'channel_history_changed',
+        'im_created',
+        'im_open',
+        'im_close',
+        'im_marked',
+        'im_history_changed',
+        'group_joined',
+        'group_left',
+        'group_open',
+        'group_close',
+        'group_archive',
+        'group_unarchive',
+        'group_rename',
+        'group_marked',
+        'group_history_changed',
+        'file_created',
+        'file_shared',
+        'file_unshared',
+        'file_public',
+        'file_private',
+        'file_change',
+        'file_deleted',
+        'file_comment_added',
+        'file_comment_edited',
+        'file_comment_deleted',
+        'presence_change',
+        'manual_presence_change',
+        'pref_change',
+        'user_change',
+        'team_join',
+        'star_added',
+        'star_removed',
+        'emoji_changed',
+        'commands_changed',
+        'team_pref_change',
+        'team_rename',
+        'team_domain_change',
+        'email_domain_changed',
+        'bot_added',
+        'bot_changed',
+        'accounts_changed',
+        'team_migration_started' ]
 
 class SlackEvent(object):
     """
@@ -36,9 +90,9 @@ class SlackSocket(object):
         self.events = []
         self.token = slacktoken
         self.translate = translate
-        self.thread = thread.start_new_thread(self.start,())
+        self.thread = thread.start_new_thread(self.open,())
 
-    def start(self):
+    def open(self):
         ws = websocket.WebSocketApp(self._get_websocket_url(),
                                     on_message = self._event_handler,
                                     on_error   = self._error_handler,
@@ -46,11 +100,28 @@ class SlackSocket(object):
                                     on_close   = self._exit_handler)
         ws.run_forever()
 
-    def get_event(self):
-        #TODO: add ability to filter by event type
+    def get_event(self,type='all'):
+        """
+        return event object in the order received or block until an event is
+        received and return it.
+        params:
+         - type(str): A slack event type to filter by. Default 'all' returns
+            all slack events. See https://api.slack.com/events for a listing
+            of valid event types.
+        """
+        if type != 'all':
+            if type not in event_types:
+                #TODO: make slacksocket nameerror exception class
+                raise NameError('unknown event type %s\n \
+                                see https://api.slack.com/events' % type)
         while True:
             try:
-                return self.events.pop(0)
+                if type == 'all':
+                    return self.events.pop(0)
+                else:
+                    e = self.events.pop(0)
+                    if e.type == type:
+                        return e
             except IndexError:
                 pass
 
@@ -104,6 +175,5 @@ class SlackSocket(object):
     def _error_handler(self,ws,error):
         log.critical('websocket error:\n %s' % error)
 
-    def _exit_handler(ws):
-        #TODO: attempt websocket reconnection
-        raise Exception('websocket closed!')
+    def _exit_handler(self,ws):
+        self.thread = thread.start_new_thread(self.open,())
