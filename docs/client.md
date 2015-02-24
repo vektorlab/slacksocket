@@ -28,8 +28,11 @@ Return event object in the order received or block until an event is received an
 
 Event object received from SlackSocket
 
+Note: If slacksocket was instantiated with translate=True(default), user and channel IDs in the event will be replaced with their human-readable versions rather than ID. 
+
 **Attributes**:
 
 * type (str): The Slack API event type
-* time (int): The UTC epoch time that the event was received by the client
-* json (str): The full JSON of the event received. If slacksocket was instantiated with translate=True(default), user and channel IDs will be replaced with their human-readable versions rather than ID. 
+* time (int): UTC epoch time that the event was received by the client
+* event (dict): Dictionary of the event received from slack
+* json (str): Event in JSON format

@@ -85,6 +85,7 @@ class SlackEvent(object):
         self.type = event['type']
         self.time = int(time.time())
         self.json = json.dumps(event)
+        self.event = event
 
 class SlackSocket(object):
     #TODO: add method to properly exit, close socket
