@@ -60,6 +60,18 @@ event_types = [ 'hello',
         'accounts_changed',
         'team_migration_started' ]
 
+class SlackSocketEventNameError(NameError):
+    """
+    Invalid name
+    """
+    pass
+
+class SlackSocketAPIError(RuntimeError):
+    """
+    Error response from Slack API
+    """
+    pass
+
 class SlackEvent(object):
     """
     SlackEvent is an event received from the Slack RTM API
@@ -111,8 +123,7 @@ class SlackSocket(object):
         """
         if type != 'all':
             if type not in event_types:
-                #TODO: make slacksocket nameerror exception class
-                raise NameError('unknown event type %s\n \
+                raise SlackSocketEventNameError('unknown event type %s\n \
                                 see https://api.slack.com/events' % type)
         while True:
             try:
@@ -132,7 +143,7 @@ class SlackSocket(object):
         r = requests.get(slackurl['rtm'],params={'token':self.token})
         rj = r.json()
         if not rj['ok']:
-            raise RuntimeError('Error from slack api:\n %s' % r.text)
+            raise SlackSocketAPIError('Error from slack api:\n %s' % r.text)
 
         return rj['url']
 
