@@ -88,7 +88,6 @@ class SlackEvent(object):
         self.event = event
 
 class SlackSocket(object):
-    #TODO: add method to properly exit, close socket
     """
     SlackSocket class provides a streaming interface to the Slack Real Time
     Messaging API
