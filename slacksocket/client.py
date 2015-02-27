@@ -1,6 +1,6 @@
 import os,json,logging,websocket,requests,time,thread
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARN)
 log = logging.getLogger('slacksocket')
 
 slackurl = { 'rtm'   : 'https://slack.com/api/rtm.start',
