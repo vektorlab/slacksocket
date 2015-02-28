@@ -112,27 +112,33 @@ class SlackSocket(object):
                                     on_close   = self._exit_handler)
         ws.run_forever()
 
-    def get_event(self,type='all'):
+    def get_event(self,event_filter='all'):
         """
         return event object in the order received or block until an event is
         received and return it.
         params:
-         - type(str): A slack event type to filter by. Default 'all' returns
-            all slack events. See https://api.slack.com/events for a listing
-            of valid event types.
+         - event_filter(list): Slack event type(s) to filter by. Excluding a
+            filter returns all slack events. See https://api.slack.com/events
+            for a listing of valid event types.
         """
-        if type != 'all':
-            if type not in event_types:
+        #validate event filter
+        if event_filter == 'all':
+            event_filter = event_types
+
+        if type(event_filter) != list:
+            raise TypeError('event_filter must be given as a list')
+
+        for f in event_filter:
+            if f not in event_types:
                 raise SlackSocketEventNameError('unknown event type %s\n \
-                                see https://api.slack.com/events' % type)
+                             see https://api.slack.com/events' % event_filter)
+
+        #return or block until we have something to return
         while True:
             try:
-                if type == 'all':
-                    return self.events.pop(0)
-                else:
-                    e = self.events.pop(0)
-                    if e.type == type:
-                        return e
+                e = self.events.pop(0)
+                if e.type in event_filter:
+                    return e
             except IndexError:
                 pass
 
