@@ -20,7 +20,7 @@ Return event object in the order received or block until an event is received an
 
 **Params**:
 
-* type (str): A slack event type to filter by. Default 'all' returns all slack events. See https://api.slack.com/events for a listing of valid event types.
+* event_filter (list): Slack event type(s) to filter by. Excluding a filter returns all slack events. See https://api.slack.com/events for a listing of valid event types.
 
 **Returns** (obj): SlackEvent object
 
