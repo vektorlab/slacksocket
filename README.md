@@ -26,3 +26,7 @@ while True:
 {"type": "hello"}
 {"text": "ah", "ts": "1424419060.000268", "user": "bradley", "reply_to": 31, "type": "message", "channel": "D03ABT9"}
 ```
+
+# Documentation
+
+Full documentation is available in the docs/ folder or at http://slacksocket.readthedocs.org/en/latest/
