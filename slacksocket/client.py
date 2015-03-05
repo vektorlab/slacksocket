@@ -3,10 +3,13 @@ import os,json,logging,websocket,requests,time,thread
 logging.basicConfig(level=logging.WARN)
 log = logging.getLogger('slacksocket')
 
-slackurl = { 'rtm'   : 'https://slack.com/api/rtm.start',
-             'users' : 'https://slack.com/api/users.list' }
+slack = 'https://slack.com/api/'
+slackurl = { 'rtm'      : slack + 'rtm.start',
+             'users'    : slack + 'users.list',
+             'channels' : slack + 'channels.list',
+             'groups'   : slack + 'groups.list',
+             'ims'      : slack + 'im.list' }
 
-#TODO: add event_type groups for all channel events, all group events, etc.
 event_types = [ 'hello',
         'message',
         'channel_marked',
@@ -71,6 +74,8 @@ class SlackSocketAPIError(RuntimeError):
     Error response from Slack API
     """
     pass
+
+#TODO: create a common slack api request object
 
 class SlackEvent(object):
     """
@@ -171,6 +176,27 @@ class SlackSocket(object):
         else:
             return "unknown"
 
+    def _lookup_channel(self,channel_id):
+        """
+        Look up a channelname from channel id
+        """
+        for channel_type in ['channels','groups','ims']:
+            r = requests.get(slackurl[channel_type],params={'token':self.token})
+            rj = r.json()
+            if not rj['ok']:
+                log.critical('error from slack api:\n %s' % r)
+            for channel in rj[channel_type]:
+                if channel['id'] == channel_id:
+                    if channel_type == 'ims':
+                        return { 'channel_type' : channel_type,
+                                 'channel_name' : self._lookup_user(channel['user']) }
+                    else:
+                        return { 'channel_type' : channel_type,
+                                 'channel_name' : channel['name'] }
+        #if no matches were found
+        return { 'channel_type' : 'unknown',
+                 'channel_name' : 'unknown' }
+
     #######
     # Handlers
     #######
@@ -179,10 +205,13 @@ class SlackSocket(object):
         log.debug('event recieved: %s' % event)
         event = json.loads(event)
 
+        #TODO: make use of channel_type returned from _lookup_channel
         if self.translate:
             if event.has_key('user'):
                 event['user'] = self._lookup_user(event['user'])
-            #TODO: add channel id lookup
+            if event.has_key('channel'):
+                c = self._lookup_channel(event['channel'])
+                event['channel'] = c['channel_name']
 
         self.events.append(SlackEvent(event))
 
