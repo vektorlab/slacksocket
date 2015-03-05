@@ -180,23 +180,22 @@ class SlackSocket(object):
         """
         Look up a channelname from channel id
         """
-        #TODO: cleanup channel type lookup and translation
-        #first concatenate all channel types into a dict
-        all_channels = {}
-        for c in ['channels','groups','ims']:
-            r = requests.get(slackurl[c],params={'token':self.token})
+        for channel_type in ['channels','groups','ims']:
+            r = requests.get(slackurl[channel_type],params={'token':self.token})
             rj = r.json()
             if not rj['ok']:
                 log.critical('error from slack api:\n %s' % r)
-
-            all_channels[c] = rj[c]
-
-        for channel_type in all_channels:
-            for channel in all_channels[channel_type]:
+            for channel in rj[channel_type]:
                 if channel['id'] == channel_id:
-                    return channel['name']
-        else:
-            return "unknown"
+                    if channel_type == 'ims':
+                        return { 'channel_type' : channel_type,
+                                 'channel_name' : self._lookup_user(channel['user']) }
+                    else:
+                        return { 'channel_type' : channel_type,
+                                 'channel_name' : channel['name'] }
+        #if no matches were found
+        return { 'channel_type' : 'unknown',
+                 'channel_name' : 'unknown' }
 
     #######
     # Handlers
@@ -206,11 +205,13 @@ class SlackSocket(object):
         log.debug('event recieved: %s' % event)
         event = json.loads(event)
 
+        #TODO: make use of channel_type returned from _lookup_channel
         if self.translate:
             if event.has_key('user'):
                 event['user'] = self._lookup_user(event['user'])
             if event.has_key('channel'):
-                event['channel'] = self._lookup_channel(event['channel'])
+                c = self._lookup_channel(event['channel'])
+                event['channel'] = c['channel_name']
 
         self.events.append(SlackEvent(event))
 
