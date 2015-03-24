@@ -4,7 +4,8 @@ logging.basicConfig(level=logging.WARN)
 log = logging.getLogger('slacksocket')
 
 slack = 'https://slack.com/api/'
-slackurl = { 'rtm'      : slack + 'rtm.start',
+slackurl = { 'test'     : slack + 'auth.test',
+             'rtm'      : slack + 'rtm.start',
              'users'    : slack + 'users.list',
              'channels' : slack + 'channels.list',
              'groups'   : slack + 'groups.list',
@@ -107,6 +108,7 @@ class SlackSocket(object):
         self.events = []
         self.token = slacktoken
         self.translate = translate
+        self.team,self.user = self._auth_test()
         self.thread = thread.start_new_thread(self.open,())
 
     def open(self):
@@ -147,6 +149,10 @@ class SlackSocket(object):
             except IndexError:
                 pass
 
+    #######
+    # Internal Methods
+    #######
+
     def _get_websocket_url(self):
         """
         retrieve a fresh websocket url from slack api
@@ -157,6 +163,20 @@ class SlackSocket(object):
             raise SlackSocketAPIError('Error from slack api:\n %s' % r.text)
 
         return rj['url']
+
+    def _auth_test(self):
+        """
+        Perform API auth test and get our user and team
+        """
+        r = requests.get(slackurl['test'],params={'token':self.token})
+        rj = r.json()
+        if not rj['ok']:
+            raise SlackSocketAPIError('Error from slack api:\n %s' % r.text)
+        
+        if self.translate:
+            return (rj['team'],rj['user'])
+        else:
+            return (rj['team_id'],rj['user_id'])
 
     def _lookup_user(self,user_id):
         """
