@@ -12,7 +12,7 @@ s = SlackSocket('<slack-token>')
 * slacktoken (str): token to authenticate with slack
 * translate (bool): yield events with human-readable user/channel names rather than id. default true
 
-****
+**Methods**
 
 ## get_event
 
