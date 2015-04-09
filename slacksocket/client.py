@@ -20,7 +20,7 @@ class SlackSocketAPIError(RuntimeError):
 
 class SlackEvent(object):
     """
-    SlackEvent is an event received from the Slack RTM API
+    Event received from the Slack RTM API
     params:
      - event(dict)
     attributes:
@@ -118,6 +118,7 @@ class SlackSocket(object):
         else:
             return (rj['team_id'],rj['user_id'])
 
+    #TODO: add ability for lookup via id and cname
     def _lookup_user(self,user_id):
         """
         Look up a username from user id
@@ -136,6 +137,7 @@ class SlackSocket(object):
         else:
             return "unknown"
 
+    #TODO: add ability for lookup via id and cname
     def _lookup_channel(self,channel_id):
         """
         Look up a channelname from channel id
