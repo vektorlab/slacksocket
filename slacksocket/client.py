@@ -91,14 +91,14 @@ class SlackSocket(object):
     def __init__(self,slacktoken,translate=True):
         if type(translate) != bool:
             raise TypeError('translate must be a boolean')
-        self.events = []
+        self.eventq = []
         self.translate = translate
         self.client = SlackClient(slacktoken)
 
         self.team,self.user = self._auth_test()
         self.thread = thread.start_new_thread(self._open,())
 
-    def get_event(self,event_filter='all'):
+    def events(self,event_filter='all'):
         """
         return event object in the order received or block until an event is
         received and return it.
@@ -122,7 +122,7 @@ class SlackSocket(object):
         #return or block until we have something to return
         while True:
             try:
-                e = self.events.pop(0)
+                e = self.eventq.pop(0)
                 if e.type in event_filter:
                     return e
             except IndexError:
@@ -215,7 +215,7 @@ class SlackSocket(object):
                 c = self._lookup_channel(event['channel'])
                 event['channel'] = c['channel_name']
 
-        self.events.append(SlackEvent(event))
+        self.eventq.append(SlackEvent(event))
 
     def _open_handler(self,ws):
         log.info('websocket connection established')
