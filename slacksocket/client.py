@@ -180,23 +180,26 @@ class SlackSocket(object):
         else:
             return "unknown"
 
-    #TODO: add ability for lookup via id and cname
-    def _lookup_channel(self,channel_id):
+    #TODO: add ability for lookup via cname
+    def _lookup_channel(self,id):
         """
         Look up a channelname from channel id
         """
-        for channel_type in ['channels','groups','ims']:
-            clist = self.client.get_json(slackurl[channel_type])[channel_type]
-            for channel in clist:
-                if channel['id'] == channel_id:
-                    if channel_type == 'ims':
-                        return { 'channel_type' : channel_type,
-                                 'channel_name' : self._lookup_user(channel['user']) }
-                    else:
-                        return { 'channel_type' : channel_type,
-                                 'channel_name' : channel['name'] }
+        for ctype in ['channels','groups','ims']:
+            channel_list = self.client.get_json(slackurl[ctype])[ctype]
+            matching = [ c for c in channel_list if channel['id'] == id ]
+            if matching:
+                channel = matching[0]
+                if ctype == 'ims':
+                    cname = self._lookup_user(channel['user'])
+                else:
+                    cname = channel['name']
+
+                return { 'channel_type' : ctype,
+                         'channel_name' : cname }
+
         #if no matches were found
-        return { 'channel_type' : 'unknown',
+        return { 'ctype' : 'unknown',
                  'channel_name' : 'unknown' }
 
     #######
