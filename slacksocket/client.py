@@ -37,7 +37,7 @@ class SlackClient(requests.Session):
     """
     """
     def __init__(self, token):
-        super(Client, self).__init__()
+        super(SlackClient, self).__init__()
         self.token = token
 
     def get_json(self,url):
@@ -55,7 +55,7 @@ class SlackClient(requests.Session):
         except requests.exceptions.HTTPError as e:
             raise errors.SlackSocketAPIError(e, res, explanation=explanation)
 
-        rj = res.json
+        rj = res.json()
         if not rj['ok']:
             raise SlackSocketAPIError('Error from slack api:\n %s' % r.text)
 
@@ -74,7 +74,7 @@ class SlackMsg(object):
     def __init__(self,id,text,channel):
         self.msgdict = { 'id'      : id,
                          'text'    : text,
-                         'channel' : channel,
+                         'channel' : channel }
         self.time = int(time.time())
         self.json = json.dumps(event)
         self.event = event
@@ -172,7 +172,7 @@ class SlackSocket(object):
         if user_id == 'USLACKBOT':
             return "slackbot"
 
-        members = self.client.get_json(slackurl['users'])
+        members = self.client.get_json(slackurl['users'])['members']
 
         for user in members:
             if user['id'] == user_id:
@@ -187,7 +187,7 @@ class SlackSocket(object):
         """
         for ctype in ['channels','groups','ims']:
             channel_list = self.client.get_json(slackurl[ctype])[ctype]
-            matching = [ c for c in channel_list if channel['id'] == id ]
+            matching = [ c for c in channel_list if c['id'] == id ]
             if matching:
                 channel = matching[0]
                 if ctype == 'ims':
