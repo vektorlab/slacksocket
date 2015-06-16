@@ -14,7 +14,7 @@ s = SlackSocket('<slack-token>')
 
 **Methods**
 
-## get_event
+## events
 
 Return event object in the order received or block until an event is received and return it.
 
