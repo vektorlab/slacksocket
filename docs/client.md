@@ -14,15 +14,25 @@ s = SlackSocket('<slack-token>')
 
 **Methods**
 
-## events
+## get_event
 
-Return event object in the order received or block until an event is received and return it.
+Return a single event object in the order received or block until an event is received and return it.
 
 **Params**:
 
 * event_filter (list): Slack event type(s) to filter by. Excluding a filter returns all slack events. See https://api.slack.com/events for a listing of valid event types.
 
 **Returns** (obj): SlackEvent object
+
+## events
+
+Return a generator yielding SlackEvent objects
+
+**Params**:
+
+* event_filter (list): Slack event type(s) to filter by. Excluding a filter returns all slack events. See https://api.slack.com/events for a listing of valid event types.
+
+**Returns** (generator): A generator of SlackEvent objects
 
 # SlackEvent
 
