@@ -114,7 +114,7 @@ class SlackSocket(object):
                 if e.type in event_filter:
                     return e
             except IndexError:
-                pass
+                time.sleep(.2)
 
     def events(self,event_filter='all'):
         """
@@ -127,12 +127,8 @@ class SlackSocket(object):
         self._validate_filters(event_filter)
 
         while True:
-            while len(self.eventq) > 0:
-                e = self.eventq.pop(0)
-                if e.type in event_filter:
-                    yield(e)
-
-            time.sleep(.2)
+            e = self.get_event(event_filter=event_filter)
+                yield(e)
 
     def send_msg(self,text):
         """
