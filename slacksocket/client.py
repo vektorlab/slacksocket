@@ -16,8 +16,6 @@ class SlackSocketAPIError(RuntimeError):
     """
     pass
 
-#TODO: create a common slack api request object
-
 class SlackEvent(object):
     """
     Event received from the Slack RTM API
@@ -98,26 +96,16 @@ class SlackSocket(object):
         self.team,self.user = self._auth_test()
         self.thread = thread.start_new_thread(self._open,())
 
-    def events(self,event_filter='all'):
+    def get_event(self,event_filter='all'):
         """
-        return event object in the order received or block until an event is
+        return a single event object or block until an event is
         received and return it.
         params:
          - event_filter(list): Slack event type(s) to filter by. Excluding a
             filter returns all slack events. See https://api.slack.com/events
             for a listing of valid event types.
         """
-        #validate event filter
-        if event_filter == 'all':
-            event_filter = event_types
-
-        if type(event_filter) != list:
-            raise TypeError('event_filter must be given as a list')
-
-        for f in event_filter:
-            if f not in event_types:
-                raise SlackSocketEventNameError('unknown event type %s\n \
-                             see https://api.slack.com/events' % event_filter)
+        self._validate_filters(event_filter)
 
         #return or block until we have something to return
         while True:
@@ -127,6 +115,24 @@ class SlackSocket(object):
                     return e
             except IndexError:
                 pass
+
+    def events(self,event_filter='all'):
+        """
+        returns a blocking generator yielding Slack event objects
+        params:
+         - event_filter(list): Slack event type(s) to filter by. Excluding a
+            filter returns all slack events. See https://api.slack.com/events
+            for a listing of valid event types.
+        """
+        self._validate_filters(event_filter)
+
+        while True:
+            while len(self.eventq) > 0:
+                e = self.eventq.pop(0)
+                if e.type in event_filter:
+                    yield(e)
+
+            time.sleep(.2)
 
     def send_msg(self,text):
         """
@@ -147,6 +153,18 @@ class SlackSocket(object):
                                     on_open    = self._open_handler,
                                     on_close   = self._exit_handler)
         ws.run_forever()
+
+    def _validate_filters(self,filters):
+        if filters == 'all':
+            filters = event_types
+
+        if type(filters) != list:
+            raise TypeError('filters must be given as a list')
+
+        for f in filters:
+            if f not in event_types:
+                raise SlackSocketEventNameError('unknown event type %s\n \
+                             see https://api.slack.com/events' % filters)
 
     def _get_websocket_url(self):
         """
