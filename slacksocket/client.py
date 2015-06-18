@@ -98,6 +98,9 @@ class SlackSocket(object):
         while True:
             try:
                 e = self.eventq.pop(0)
+                #return immediately if no filtering
+                if event_filter == 'all': 
+                    return e
                 if e.type in event_filter:
                     return e
             except IndexError:
@@ -115,7 +118,7 @@ class SlackSocket(object):
 
         while True:
             e = self.get_event(event_filter=event_filter)
-                yield(e)
+            yield(e)
         
     #######
     # Internal Methods
