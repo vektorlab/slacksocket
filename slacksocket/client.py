@@ -58,24 +58,6 @@ class SlackClient(requests.Session):
 
         return rj
 
-class SlackMsg(object):
-    """
-    Slack default formatted message capable of being sent via the RTM API
-    params:
-     - text(str)
-     - channel(str)
-    attributes:
-     - type: Slack event type
-     - time: UTC time event was received 
-    """
-    def __init__(self,id,text,channel):
-        self.msgdict = { 'id'      : id,
-                         'text'    : text,
-                         'channel' : channel }
-        self.time = int(time.time())
-        self.json = json.dumps(event)
-        self.event = event
-
 class SlackSocket(object):
     """
     SlackSocket class provides a streaming interface to the Slack Real Time
@@ -128,12 +110,6 @@ class SlackSocket(object):
         while True:
             e = self.get_event(event_filter=event_filter)
                 yield(e)
-
-    def send_msg(self,text):
-        """
-        send a message via Slack RTM socket
-        """
-        pass
         
     #######
     # Internal Methods
