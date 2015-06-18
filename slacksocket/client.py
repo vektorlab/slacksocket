@@ -1,7 +1,6 @@
 import os,json,logging,websocket,requests,time,thread
 from .config import slackurl,event_types
 
-logging.basicConfig(level=logging.WARN)
 log = logging.getLogger('slacksocket')
 
 class SlackSocketEventNameError(NameError):
