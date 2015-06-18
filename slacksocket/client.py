@@ -5,21 +5,10 @@ import websocket
 import requests
 import time
 import thread
+import slacksocket.errors as errors
 from .config import slackurl,event_types
 
 log = logging.getLogger('slacksocket')
-
-class SlackSocketEventNameError(NameError):
-    """
-    Invalid name
-    """
-    pass
-
-class SlackSocketAPIError(RuntimeError):
-    """
-    Error response from Slack API
-    """
-    pass
 
 class SlackEvent(object):
     """
@@ -56,11 +45,11 @@ class SlackClient(requests.Session):
         try:
             res.raise_for_status()
         except requests.exceptions.HTTPError as e:
-            raise errors.SlackSocketAPIError(e, res, explanation=explanation)
+            raise errors.SlackSocketAPIError(e)
 
         rj = res.json()
         if not rj['ok']:
-            raise SlackSocketAPIError('Error from slack api:\n %s' % r.text)
+            raise errors.SlackSocketAPIError('Error from slack api:\n %s' % r.text)
 
         return rj
 
