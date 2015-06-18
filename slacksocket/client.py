@@ -1,4 +1,10 @@
-import os,json,logging,websocket,requests,time,thread
+import os
+import json
+import logging
+import websocket
+import requests
+import time
+import thread
 from .config import slackurl,event_types
 
 log = logging.getLogger('slacksocket')
