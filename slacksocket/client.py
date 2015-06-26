@@ -40,8 +40,6 @@ class SlackMsg(object):
                           'text'    : text,
                           'channel' : channel }
         self.time = int(time.time())
-        self.json = json.dumps(event)
-        self.event = event
 
 class SlackClient(requests.Session):
     """
@@ -191,10 +189,11 @@ class SlackSocket(object):
         else:
             return "unknown"
 
-    #TODO: add ability for lookup via cname
-    def _lookup_channel(self,id):
+    def _lookup_channel_by_id(self,id):
         """
         Look up a channelname from channel id
+        params:
+         - id(str): The channel id to lookup
         """
         for ctype in ['channels','groups','ims']:
             channel_list = self.client.get_json(slackurl[ctype])[ctype]
@@ -210,8 +209,27 @@ class SlackSocket(object):
                          'channel_name' : cname }
 
         #if no matches were found
-        return { 'ctype' : 'unknown',
+        return { 'channel_type' : 'unknown',
                  'channel_name' : 'unknown' }
+
+    def _lookup_channel_by_name(self,cname):
+        """
+        Look up a channel id from a given name
+        params:
+         - cname(str): The channel name to lookup
+        """
+        for ctype in ['channels','groups']:
+            channel_list = self.client.get_json(slackurl[ctype])[ctype]
+            matching = [ c for c in channel_list if c['name'] == cname ]
+            if matching:
+                channel = matching[0]
+
+                return { 'channel_type' : ctype,
+                         'channel_id'   : channel['id'] }
+
+        #if no matches were found
+        return { 'channel_type' : 'unknown',
+                 'channel_id'   : 'unknown' }
 
     #######
     # Websocket Handlers
