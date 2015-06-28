@@ -14,22 +14,22 @@ log = logging.getLogger('slacksocket')
 class SlackClient(requests.Session):
     """
     """
-    def __init__(self, token):
+    def __init__(self,token):
         super(SlackClient, self).__init__()
         self.token = token
 
     def get_json(self,url):
         return self._result(self._get(url))
 
-    def _post(self, url, payload=None):
+    def _post(self,url,payload=None):
         if payload:
             return self.post(url,params={'token':self.token},payload=payload)
-        return self.post(url params={'token':self.token})
+        return self.post(url,params={'token':self.token})
 
-    def _get(self, url):
+    def _get(self,url):
         return self.get(url,params={'token':self.token})
 
-    def _result(self, res):
+    def _result(self,res):
         try:
             res.raise_for_status()
         except requests.exceptions.HTTPError as e:
@@ -54,6 +54,7 @@ class SlackSocket(object):
         if type(translate) != bool:
             raise TypeError('translate must be a boolean')
         self.eventq = []
+        self.sendq = []
         self.translate = translate
         self.client = SlackClient(slacktoken)
 
@@ -97,11 +98,28 @@ class SlackSocket(object):
             e = self.get_event(event_filter=event_filter)
             yield(e)
 
-    def send_msg(self,text):
+    def send_msg(self,text,channel_name=None,channel_id=None):
         """
-        send a message via Slack RTM socket
+        Send a message via Slack RTM socket, returning the message object
+        after receiving a reply-to confirmation
         """
-        pass
+        if not channel_name and not channel_id:
+            raise Exception('One of channel_id or channel_name \
+                             parameters must be given')
+        if channel_name:
+            c = self._lookup_channel_by_name(channel_name)
+            channel_id = c['channel_id']
+
+        self.send_id += 1
+        msg = SlackMsg(self.send_id,channel_id,text)
+        self.ws.send(msg.json)
+        for e in self.events():
+            if e.event.has_key('reply_to'):
+                if e.event['reply_to'] == self.send_id:
+                    msg.sent = True
+                    msg.time = e.event['ts']
+                    return msg
+        return msg
         
     #######
     # Internal Methods
@@ -109,13 +127,13 @@ class SlackSocket(object):
 
     def _open(self):
         #reset id for sending messages with each new socket
-        self.send_id = 1
-        ws = websocket.WebSocketApp(self._get_websocket_url(),
+        self.send_id = 0
+        self.ws = websocket.WebSocketApp(self._get_websocket_url(),
                                     on_message = self._event_handler,
                                     on_error   = self._error_handler,
                                     on_open    = self._open_handler,
                                     on_close   = self._exit_handler)
-        ws.run_forever()
+        self.ws.run_forever()
 
     def _validate_filters(self,filters):
         if filters == 'all':
@@ -216,7 +234,7 @@ class SlackSocket(object):
             if event.has_key('user'):
                 event['user'] = self._lookup_user(event['user'])
             if event.has_key('channel'):
-                c = self._lookup_channel(event['channel'])
+                c = self._lookup_channel_by_id(event['channel'])
                 event['channel'] = c['channel_name']
 
         self.eventq.append(SlackEvent(event))

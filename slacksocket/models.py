@@ -26,10 +26,10 @@ class SlackMsg(object):
      - type: Slack event type
      - time: UTC time event was received 
     """
-    def __init__(self,id,text,channel):
+    def __init__(self,id,channel,text):
         self.sent = False
-        self._payload = { 'id'      : id,
+        self.payload = { 'id'      : id,
                          'type'    : 'message',
                          'text'    : text,
                          'channel' : channel }
-        self.json = json.dumps(self._payload)
+        self.json = json.dumps(self.payload)
