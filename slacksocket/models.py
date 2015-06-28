@@ -11,7 +11,8 @@ class SlackEvent(object):
      - time: UTC time event was received 
     """
     def __init__(self,event):
-        self.type = event['type']
+        if event.has_key('type'):
+            self.type = event['type']
         self.time = int(time.time())
         self.json = json.dumps(event)
         self.event = event
