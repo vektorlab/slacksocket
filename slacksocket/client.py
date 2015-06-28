@@ -7,39 +7,9 @@ import time
 import thread
 import slacksocket.errors as errors
 from .config import slackurl,event_types
+from .models import SlackEvent,SlackMsg
 
 log = logging.getLogger('slacksocket')
-
-class SlackEvent(object):
-    """
-    Event received from the Slack RTM API
-    params:
-     - event(dict)
-    attributes:
-     - type: Slack event type
-     - time: UTC time event was received 
-    """
-    def __init__(self,event):
-        self.type = event['type']
-        self.time = int(time.time())
-        self.json = json.dumps(event)
-        self.event = event
-
-class SlackMsg(object):
-    """
-    Slack default formatted message capable of being sent via the RTM API
-    params:
-     - text(str)
-     - channel(str)
-    attributes:
-     - type: Slack event type
-     - time: UTC time event was received 
-    """
-    def __init__(self,id,text,channel):
-        self._payload = { 'id'      : id,
-                          'text'    : text,
-                          'channel' : channel }
-        self.time = int(time.time())
 
 class SlackClient(requests.Session):
     """
@@ -51,11 +21,13 @@ class SlackClient(requests.Session):
     def get_json(self,url):
         return self._result(self._get(url))
 
-    def _post(self, url):
-        return self.post(url, params={'token':self.token})
+    def _post(self, url, payload=None):
+        if payload:
+            return self.post(url,params={'token':self.token},payload=payload)
+        return self.post(url params={'token':self.token})
 
     def _get(self, url):
-        return self.get(url, params={'token':self.token})
+        return self.get(url,params={'token':self.token})
 
     def _result(self, res):
         try:
