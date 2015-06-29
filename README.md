@@ -12,6 +12,7 @@ pip install slacksocket
 
 # Usage
 
+## Retrieving events/messages
 ```python
 from slacksocket import SlackSocket
 
@@ -21,9 +22,18 @@ for event = s.events():
     print(event.json)
 ```
 
+## Sending messages
+```python
+from slacksocket import SlackSocket
+
+s = SlackSocket('<slack-token>')
+
+msg = s.send_msg('Hello there', 'channel-name') 
+print(msg.sent)
 ```
-{"type": "hello"}
-{"text": "ah", "ts": "1424419060.000268", "user": "bradley", "reply_to": 31, "type": "message", "channel": "D03ABT9"}
+
+```
+True
 ```
 
 # Documentation

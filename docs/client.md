@@ -46,3 +46,13 @@ Note: If slacksocket was instantiated with translate=True(default), user and cha
 * time (int): UTC epoch time that the event was received by the client
 * event (dict): Dictionary of the event received from slack
 * json (str): Event in JSON format
+
+# SlackMsg
+
+Msg created and sent via Slack RTM websocket
+
+**Attributes**:
+
+* time (int): UTC epoch time that the message was acknowledged as sent
+* sent (bool): Boolean for message being sent successfully
+* json (str): Message in JSON format
