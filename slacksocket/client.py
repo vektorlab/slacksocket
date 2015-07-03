@@ -117,7 +117,7 @@ class SlackSocket(object):
             if e.event.has_key('reply_to'):
                 if e.event['reply_to'] == self.send_id:
                     msg.sent = True
-                    msg.time = e.event['ts']
+                    msg.ts = e.event['ts']
                     return msg
         return msg
         

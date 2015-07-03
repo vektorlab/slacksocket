@@ -8,12 +8,12 @@ class SlackEvent(object):
      - event(dict)
     attributes:
      - type: Slack event type
-     - time: UTC time event was received 
+     - ts: UTC time event was received 
     """
     def __init__(self,event):
         if event.has_key('type'):
             self.type = event['type']
-        self.time = int(time.time())
+        self.ts = int(time.time())
         self.json = json.dumps(event)
         self.event = event
 
@@ -25,7 +25,7 @@ class SlackMsg(object):
      - channel(str)
     attributes:
      - type: Slack event type
-     - time: UTC time event was received 
+     - ts: UTC time event was received 
     """
     def __init__(self,id,channel,text):
         self.sent = False
