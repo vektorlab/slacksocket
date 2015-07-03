@@ -2,6 +2,8 @@ import json
 import re
 import time
 
+delchars = ''.join(c for c in map(chr, range(256)) if not c.isalnum())
+
 class SlackEvent(object):
     """
     Event received from the Slack RTM API
@@ -13,26 +15,26 @@ class SlackEvent(object):
     """
     def __init__(self,event_json):
         self.json = event_json
-        self.event = json.loads(self.event_json)
-        self.mentions = None
+        self.event = json.loads(event_json)
+        self.mentions = []
 
-        if event.has_key('type'):
-            self.type = event['type']
+        if self.event.has_key('type'):
+            self.type = self.event['type']
 
-        if event.has_key('ts'):
-            self.ts = event['ts']
+        if self.event.has_key('ts'):
+            self.ts = self.event['ts']
         else:
             self.time = int(time.time())
         
-        if event.has_key('text'):
+        if self.event.has_key('text'):
             self.mentions = self._get_mentions(self.event['text'])
 
     def _get_mentions(self,text):
-        mentions = re.findall('<@\w+>:', text)
+        mentions = re.findall('<@\w+>', text)
         if mentions:
-            return [ m.translate(None,'<@>:') for m in mentions ]
+            return [ str(m).translate(None,delchars) for m in mentions ]
         else:
-            return None
+            return []
 
 class SlackMsg(object):
     """

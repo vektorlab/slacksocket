@@ -221,23 +221,34 @@ class SlackSocket(object):
         return { 'channel_type' : 'unknown',
                  'channel_id'   : 'unknown' }
 
+    def _translate_event(self,event):
+        """
+        Translate all user and channel ids in an event to human-readable names
+        """
+        if event.event.has_key('user'):
+            event.event['user'] = self._lookup_user(event.event['user'])
+
+        if event.event.has_key('channel'):
+            c = self._lookup_channel_by_id(event.event['channel'])
+            event.event['channel'] = c['channel_name']
+
+        event.mentions = [ self._lookup_user(u) for u in event.mentions ]
+
+        return event
+        
     #######
     # Websocket Handlers
     #######
 
-    def _event_handler(self,ws,event):
-        log.debug('event recieved: %s' % event)
-        event = json.loads(event)
+    def _event_handler(self,ws,event_json):
+        log.debug('event recieved: %s' % event_json)
+        event = SlackEvent(event_json)
 
         #TODO: make use of ctype returned from _lookup_channel
         if self.translate:
-            if event.has_key('user'):
-                event['user'] = self._lookup_user(event['user'])
-            if event.has_key('channel'):
-                c = self._lookup_channel_by_id(event['channel'])
-                event['channel'] = c['channel_name']
+            event = self._translate_event(event)
 
-        self.eventq.append(SlackEvent(event))
+        self.eventq.append(event)
 
     def _open_handler(self,ws):
         log.info('websocket connection established')
