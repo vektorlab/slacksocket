@@ -252,9 +252,17 @@ class SlackSocket(object):
 
     def _open_handler(self,ws):
         log.info('websocket connection established')
+        self.connect_ts = time.time()
 
     def _error_handler(self,ws,error):
         log.critical('websocket error:\n %s' % error)
 
     def _exit_handler(self,ws):
-        self.thread = thread.start_new_thread(self.open,())
+        log.warn('websocket connection closed')
+        # Don't attempt reconnect if our last attempt was less than 10s ago
+        if (time.time() - self.connect_ts) < 10:
+            raise errors.SlackSocketConnectionError(
+                    'Failed to establish a websocket connection'
+                    )
+        log.warn('attempting to reconnect')
+        self.thread = thread.start_new_thread(self._open,())
