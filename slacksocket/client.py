@@ -37,7 +37,7 @@ class SlackClient(requests.Session):
 
         rj = res.json()
         if not rj['ok']:
-            raise errors.SlackSocketAPIError('Error from slack api:\n %s' % r.text)
+            raise errors.SlackSocketAPIError('Error from slack api:\n %s' % res.text)
 
         return rj
 
