@@ -28,7 +28,7 @@ from slacksocket import SlackSocket
 
 s = SlackSocket('<slack-token>')
 
-msg = s.send_msg('Hello there', 'channel-name') 
+msg = s.send_msg('Hello there', channel_name='channel-name') 
 print(msg.sent)
 ```
 
