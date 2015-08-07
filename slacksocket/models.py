@@ -2,7 +2,8 @@ import json
 import re
 import time
 
-delchars = ''.join(c for c in map(chr, list(range(256))) if not c.isalnum())
+translate_map = { ord(c):None for c in \
+        map(chr, list(range(256))) if not c.isalnum() }
 
 class SlackEvent(object):
     """
@@ -32,7 +33,7 @@ class SlackEvent(object):
     def _get_mentions(self,text):
         mentions = re.findall('<@\w+>', text)
         if mentions:
-            return [ str(m).translate(None,delchars) for m in mentions ]
+            return [ str(m).translate(translate_map) for m in mentions ]
         else:
             return []
 
