@@ -1,8 +1,11 @@
+import os
+import sys
 from setuptools import setup
-from slacksocket import __version__
+
+exec(open('slacksocket/version.py').read())
 
 setup(name='slacksocket',
-      version=__version__,
+      version=version,
       packages=['slacksocket'],
       description='Slack RTM API Websocket client',
       author='Bradley Cicenas',
