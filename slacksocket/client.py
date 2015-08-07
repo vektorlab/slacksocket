@@ -116,7 +116,7 @@ class SlackSocket(object):
         msg = SlackMsg(self.send_id,channel_id,text)
         self.ws.send(msg.json)
         for e in self.events():
-            if e.event.has_key('reply_to'):
+            if 'reply_to' in e.event:
                 if e.event['reply_to'] == self.send_id:
                     msg.sent = True
                     msg.ts = e.event['ts']
@@ -227,10 +227,10 @@ class SlackSocket(object):
         """
         Translate all user and channel ids in an event to human-readable names
         """
-        if event.event.has_key('user'):
+        if 'user' in event.event:
             event.event['user'] = self._lookup_user(event.event['user'])
 
-        if event.event.has_key('channel'):
+        if 'channel' in event.event:
             c = self._lookup_channel_by_id(event.event['channel'])
             event.event['channel'] = c['channel_name']
 

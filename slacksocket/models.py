@@ -2,7 +2,7 @@ import json
 import re
 import time
 
-delchars = ''.join(c for c in map(chr, range(256)) if not c.isalnum())
+delchars = ''.join(c for c in map(chr, list(range(256))) if not c.isalnum())
 
 class SlackEvent(object):
     """
@@ -18,15 +18,15 @@ class SlackEvent(object):
         self.event = json.loads(event_json)
         self.mentions = []
 
-        if self.event.has_key('type'):
+        if 'type' in self.event:
             self.type = self.event['type']
 
-        if self.event.has_key('ts'):
+        if 'ts' in self.event:
             self.ts = self.event['ts']
         else:
             self.time = int(time.time())
         
-        if self.event.has_key('text'):
+        if 'text' in self.event:
             self.mentions = self._get_mentions(self.event['text'])
 
     def _get_mentions(self,text):
