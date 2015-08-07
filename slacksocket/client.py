@@ -4,7 +4,8 @@ import logging
 import websocket
 import requests
 import time
-import thread
+from threading import Thread
+
 import slacksocket.errors as errors
 from .config import slackurl,event_types
 from .models import SlackEvent,SlackMsg
@@ -59,7 +60,8 @@ class SlackSocket(object):
         self.client = SlackClient(slacktoken)
 
         self.team,self.user = self._auth_test()
-        self.thread = thread.start_new_thread(self._open,())
+        self.thread = Thread(target=self._open)
+        self.thread.start()
 
     def get_event(self,event_filter='all'):
         """
@@ -265,4 +267,5 @@ class SlackSocket(object):
                     'Failed to establish a websocket connection'
                     )
         log.warn('attempting to reconnect')
-        self.thread = thread.start_new_thread(self._open,())
+        self.thread = Thread(target=self._open)
+        self.thread.start()
