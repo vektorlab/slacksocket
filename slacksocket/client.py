@@ -54,14 +54,15 @@ class SlackSocket(object):
     def __init__(self,slacktoken,translate=True):
         if type(translate) != bool:
             raise TypeError('translate must be a boolean')
-        self.eventq = []
-        self.sendq = []
-        self.translate = translate
-        self.client = SlackClient(slacktoken)
+        self._eventq = []
+        self._sendq = []
+        self._translate = translate
 
+        self.client = SlackClient(slacktoken)
         self.team,self.user = self._auth_test()
-        self.thread = Thread(target=self._open)
-        self.thread.start()
+
+        self._thread = Thread(target=self._open)
+        self._thread.start()
 
     def get_event(self,event_filter='all'):
         """
@@ -77,7 +78,7 @@ class SlackSocket(object):
         #return or block until we have something to return
         while True:
             try:
-                e = self.eventq.pop(0)
+                e = self._eventq.pop(0)
                 #return immediately if no filtering
                 if event_filter == 'all': 
                     return e
@@ -112,12 +113,12 @@ class SlackSocket(object):
             c = self._lookup_channel_by_name(channel_name)
             channel_id = c['channel_id']
 
-        self.send_id += 1
-        msg = SlackMsg(self.send_id,channel_id,text)
+        self._send_id += 1
+        msg = SlackMsg(self._send_id,channel_id,text)
         self.ws.send(msg.json)
         for e in self.events():
             if 'reply_to' in e.event:
-                if e.event['reply_to'] == self.send_id:
+                if e.event['reply_to'] == self._send_id:
                     msg.sent = True
                     msg.ts = e.event['ts']
                     return msg
@@ -129,7 +130,7 @@ class SlackSocket(object):
 
     def _open(self):
         #reset id for sending messages with each new socket
-        self.send_id = 0
+        self._send_id = 0
         self.ws = websocket.WebSocketApp(self._get_websocket_url(),
                                     on_message = self._event_handler,
                                     on_error   = self._error_handler,
@@ -161,7 +162,7 @@ class SlackSocket(object):
         """
         test = self.client.get_json(slackurl['test'])
         
-        if self.translate:
+        if self._translate:
             return (test['team'],test['user'])
         else:
             return (test['team_id'],test['user_id'])
@@ -247,10 +248,10 @@ class SlackSocket(object):
         event = SlackEvent(event_json)
 
         #TODO: make use of ctype returned from _lookup_channel
-        if self.translate:
+        if self._translate:
             event = self._translate_event(event)
 
-        self.eventq.append(event)
+        self._eventq.append(event)
 
     def _open_handler(self,ws):
         log.info('websocket connection established')
@@ -267,5 +268,5 @@ class SlackSocket(object):
                     'Failed to establish a websocket connection'
                     )
         log.warn('attempting to reconnect')
-        self.thread = Thread(target=self._open)
-        self.thread.start()
+        self._thread = Thread(target=self._open)
+        self._thread.start()
