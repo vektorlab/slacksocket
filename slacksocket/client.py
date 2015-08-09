@@ -116,11 +116,13 @@ class SlackSocket(object):
         self._send_id += 1
         msg = SlackMsg(self._send_id,channel_id,text)
         self.ws.send(msg.json)
+
+        # Wait for confirmation our message was received
         for e in self.events():
             if 'reply_to' in e.event:
                 if e.event['reply_to'] == self._send_id:
                     msg.sent = True
-                    msg.ts = e.event['ts']
+                    msg.ts = e.ts
                     return msg
         return msg
         

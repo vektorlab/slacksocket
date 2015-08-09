@@ -25,7 +25,7 @@ class SlackEvent(object):
         if 'ts' in self.event:
             self.ts = self.event['ts']
         else:
-            self.time = int(time.time())
+            self.ts = int(time.time())
         
         if 'text' in self.event:
             self.mentions = self._get_mentions(self.event['text'])
