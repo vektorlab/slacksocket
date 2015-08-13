@@ -24,6 +24,18 @@ Return a single event object in the order received or block until an event is re
 
 **Returns** (obj): SlackEvent object
 
+## send_msg
+
+Send a message via Slack RTM socket and wait for confirmation it was received. One of either channel_name or channel_id params is required.
+
+**Params**:
+
+* text (str): Message body to send
+* channel_name(str): Name of the channel to post message
+* channel_id(str): Slack ID of the channel to post message
+
+**Returns** (obj): SlackMsg object
+
 ## events
 
 Return a generator yielding SlackEvent objects
