@@ -18,7 +18,7 @@ from slacksocket import SlackSocket
 
 s = SlackSocket('<slack-token>',translate=True) # translate will lookup and replace user and channel IDs with their human-readable names. default true. 
 
-for event = s.events():
+for event in s.events():
     print(event.json)
 ```
 
