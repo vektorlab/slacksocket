@@ -33,6 +33,7 @@ Send a message via Slack RTM socket and wait for confirmation it was received. O
 * text (str): Message body to send
 * channel_name(str): Name of the channel to post message
 * channel_id(str): Slack ID of the channel to post message
+* confirm(bool): Boolean to toggle blocking until a reply back is received from slack. default True 
 
 **Returns** (obj): SlackMsg object
 
