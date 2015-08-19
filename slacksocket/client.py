@@ -101,7 +101,7 @@ class SlackSocket(object):
             e = self.get_event(event_filter=event_filter)
             yield(e)
 
-    def send_msg(self,text,channel_name=None,channel_id=None):
+    def send_msg(self,text,channel_name=None,channel_id=None,confirm=True):
         """
         Send a message via Slack RTM socket, returning the message object
         after receiving a reply-to confirmation
@@ -117,14 +117,16 @@ class SlackSocket(object):
         msg = SlackMsg(self._send_id,channel_id,text)
         self.ws.send(msg.json)
 
-        # Wait for confirmation our message was received
-        for e in self.events():
-            if 'reply_to' in e.event:
-                if e.event['reply_to'] == self._send_id:
-                    msg.sent = True
-                    msg.ts = e.ts
-                    return msg
-        return msg
+        if confirm:
+            # Wait for confirmation our message was received
+            for e in self.events():
+                if 'reply_to' in e.event:
+                    if e.event['reply_to'] == self._send_id:
+                        msg.sent = True
+                        msg.ts = e.ts
+                        return msg
+        else:
+            return msg
         
     #######
     # Internal Methods
