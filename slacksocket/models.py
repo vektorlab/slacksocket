@@ -2,8 +2,9 @@ import json
 import re
 import time
 
-translate_map = { ord(c):None for c in \
-        map(chr, list(range(256))) if not c.isalnum() }
+translate_map = {ord(c): None for c in \
+                 map(chr, list(range(256))) if not c.isalnum()}
+
 
 class SlackEvent(object):
     """
@@ -14,7 +15,8 @@ class SlackEvent(object):
      - type(type): Slack event type
      - ts(float): UTC event timestamp
     """
-    def __init__(self,event_json):
+
+    def __init__(self, event_json):
         self.json = event_json
         self.event = json.loads(event_json)
         self.mentions = []
@@ -26,16 +28,17 @@ class SlackEvent(object):
             self.ts = self.event['ts']
         else:
             self.ts = int(time.time())
-        
+
         if 'text' in self.event:
             self.mentions = self._get_mentions(self.event['text'])
 
-    def _get_mentions(self,text):
+    def _get_mentions(self, text):
         mentions = re.findall('<@\w+>', text)
         if mentions:
-            return [ str(m).translate(translate_map) for m in mentions ]
+            return [str(m).translate(translate_map) for m in mentions]
         else:
             return []
+
 
 class SlackMsg(object):
     """
@@ -47,10 +50,11 @@ class SlackMsg(object):
      - type: Slack event type
      - ts: UTC time event was received 
     """
-    def __init__(self,id,channel,text):
+
+    def __init__(self, id, channel, text):
         self.sent = False
-        self.payload = { 'id'      : id,
-                         'type'    : 'message',
-                         'text'    : text,
-                         'channel' : channel }
+        self.payload = {'id': id,
+                        'type': 'message',
+                        'text': text,
+                        'channel': channel}
         self.json = json.dumps(self.payload)
