@@ -7,30 +7,32 @@ import time
 from threading import Thread
 
 import slacksocket.errors as errors
-from .config import slackurl,event_types
-from .models import SlackEvent,SlackMsg
+from .config import slackurl, event_types
+from .models import SlackEvent, SlackMsg
 
 log = logging.getLogger('slacksocket')
+
 
 class SlackClient(requests.Session):
     """
     """
-    def __init__(self,token):
+
+    def __init__(self, token):
         super(SlackClient, self).__init__()
         self.token = token
 
-    def get_json(self,url):
+    def get_json(self, url):
         return self._result(self._get(url))
 
-    def _post(self,url,payload=None):
+    def _post(self, url, payload=None):
         if payload:
-            return self.post(url,params={'token':self.token},payload=payload)
-        return self.post(url,params={'token':self.token})
+            return self.post(url, params={'token': self.token}, payload=payload)
+        return self.post(url, params={'token': self.token})
 
-    def _get(self,url):
-        return self.get(url,params={'token':self.token})
+    def _get(self, url):
+        return self.get(url, params={'token': self.token})
 
-    def _result(self,res):
+    def _result(self, res):
         try:
             res.raise_for_status()
         except requests.exceptions.HTTPError as e:
@@ -42,6 +44,7 @@ class SlackClient(requests.Session):
 
         return rj
 
+
 class SlackSocket(object):
     """
     SlackSocket class provides a streaming interface to the Slack Real Time
@@ -51,7 +54,8 @@ class SlackSocket(object):
      - translate(bool): yield events with human-readable names
         rather than id. default true
     """
-    def __init__(self,slacktoken,translate=True):
+
+    def __init__(self, slacktoken, translate=True):
         if type(translate) != bool:
             raise TypeError('translate must be a boolean')
         self._eventq = []
@@ -59,12 +63,12 @@ class SlackSocket(object):
         self._translate = translate
 
         self.client = SlackClient(slacktoken)
-        self.team,self.user = self._auth_test()
+        self.team, self.user = self._auth_test()
 
         self._thread = Thread(target=self._open)
         self._thread.start()
 
-    def get_event(self,event_filter='all'):
+    def get_event(self, event_filter='all'):
         """
         return a single event object or block until an event is
         received and return it.
@@ -75,19 +79,19 @@ class SlackSocket(object):
         """
         self._validate_filters(event_filter)
 
-        #return or block until we have something to return
+        # return or block until we have something to return
         while True:
             try:
                 e = self._eventq.pop(0)
-                #return immediately if no filtering
-                if event_filter == 'all': 
+                # return immediately if no filtering
+                if event_filter == 'all':
                     return e
                 if e.type in event_filter:
                     return e
             except IndexError:
                 time.sleep(.2)
 
-    def events(self,event_filter='all'):
+    def events(self, event_filter='all'):
         """
         returns a blocking generator yielding Slack event objects
         params:
@@ -99,9 +103,9 @@ class SlackSocket(object):
 
         while True:
             e = self.get_event(event_filter=event_filter)
-            yield(e)
+            yield (e)
 
-    def send_msg(self,text,channel_name=None,channel_id=None,confirm=True):
+    def send_msg(self, text, channel_name=None, channel_id=None, confirm=True):
         """
         Send a message via Slack RTM socket, returning the message object
         after receiving a reply-to confirmation
@@ -114,7 +118,7 @@ class SlackSocket(object):
             channel_id = c['channel_id']
 
         self._send_id += 1
-        msg = SlackMsg(self._send_id,channel_id,text)
+        msg = SlackMsg(self._send_id, channel_id, text)
         self.ws.send(msg.json)
 
         if confirm:
@@ -127,22 +131,22 @@ class SlackSocket(object):
                         return msg
         else:
             return msg
-        
+
     #######
     # Internal Methods
     #######
 
     def _open(self):
-        #reset id for sending messages with each new socket
+        # reset id for sending messages with each new socket
         self._send_id = 0
         self.ws = websocket.WebSocketApp(self._get_websocket_url(),
-                                    on_message = self._event_handler,
-                                    on_error   = self._error_handler,
-                                    on_open    = self._open_handler,
-                                    on_close   = self._exit_handler)
+                                         on_message=self._event_handler,
+                                         on_error=self._error_handler,
+                                         on_open=self._open_handler,
+                                         on_close=self._exit_handler)
         self.ws.run_forever()
 
-    def _validate_filters(self,filters):
+    def _validate_filters(self, filters):
         if filters == 'all':
             filters = event_types
 
@@ -165,13 +169,13 @@ class SlackSocket(object):
         Perform API auth test and get our user and team
         """
         test = self.client.get_json(slackurl['test'])
-        
-        if self._translate:
-            return (test['team'],test['user'])
-        else:
-            return (test['team_id'],test['user_id'])
 
-    def _lookup_user(self,user_id):
+        if self._translate:
+            return (test['team'], test['user'])
+        else:
+            return (test['team_id'], test['user_id'])
+
+    def _lookup_user(self, user_id):
         """
         Look up a username from user id
         """
@@ -186,15 +190,15 @@ class SlackSocket(object):
         else:
             return "unknown"
 
-    def _lookup_channel_by_id(self,id):
+    def _lookup_channel_by_id(self, id):
         """
         Look up a channelname from channel id
         params:
          - id(str): The channel id to lookup
         """
-        for ctype in ['channels','groups','ims']:
+        for ctype in ['channels', 'groups', 'ims']:
             channel_list = self.client.get_json(slackurl[ctype])[ctype]
-            matching = [ c for c in channel_list if c['id'] == id ]
+            matching = [c for c in channel_list if c['id'] == id]
             if matching:
                 channel = matching[0]
                 if ctype == 'ims':
@@ -202,33 +206,33 @@ class SlackSocket(object):
                 else:
                     cname = channel['name']
 
-                return { 'channel_type' : ctype,
-                         'channel_name' : cname }
+                return {'channel_type': ctype,
+                        'channel_name': cname}
 
-        #if no matches were found
-        return { 'channel_type' : 'unknown',
-                 'channel_name' : 'unknown' }
+        # if no matches were found
+        return {'channel_type': 'unknown',
+                'channel_name': 'unknown'}
 
-    def _lookup_channel_by_name(self,cname):
+    def _lookup_channel_by_name(self, cname):
         """
         Look up a channel id from a given name
         params:
          - cname(str): The channel name to lookup
         """
-        for ctype in ['channels','groups']:
+        for ctype in ['channels', 'groups']:
             channel_list = self.client.get_json(slackurl[ctype])[ctype]
-            matching = [ c for c in channel_list if c['name'] == cname ]
+            matching = [c for c in channel_list if c['name'] == cname]
             if matching:
                 channel = matching[0]
 
-                return { 'channel_type' : ctype,
-                         'channel_id'   : channel['id'] }
+                return {'channel_type': ctype,
+                        'channel_id': channel['id']}
 
-        #if no matches were found
-        return { 'channel_type' : 'unknown',
-                 'channel_id'   : 'unknown' }
+        # if no matches were found
+        return {'channel_type': 'unknown',
+                'channel_id': 'unknown'}
 
-    def _translate_event(self,event):
+    def _translate_event(self, event):
         """
         Translate all user and channel ids in an event to human-readable names
         """
@@ -239,38 +243,38 @@ class SlackSocket(object):
             c = self._lookup_channel_by_id(event.event['channel'])
             event.event['channel'] = c['channel_name']
 
-        event.mentions = [ self._lookup_user(u) for u in event.mentions ]
+        event.mentions = [self._lookup_user(u) for u in event.mentions]
 
         return event
-        
+
     #######
     # Websocket Handlers
     #######
 
-    def _event_handler(self,ws,event_json):
+    def _event_handler(self, ws, event_json):
         log.debug('event recieved: %s' % event_json)
         event = SlackEvent(event_json)
 
-        #TODO: make use of ctype returned from _lookup_channel
+        # TODO: make use of ctype returned from _lookup_channel
         if self._translate:
             event = self._translate_event(event)
 
         self._eventq.append(event)
 
-    def _open_handler(self,ws):
+    def _open_handler(self, ws):
         log.info('websocket connection established')
         self.connect_ts = time.time()
 
-    def _error_handler(self,ws,error):
+    def _error_handler(self, ws, error):
         log.critical('websocket error:\n %s' % error)
 
-    def _exit_handler(self,ws):
+    def _exit_handler(self, ws):
         log.warn('websocket connection closed')
         # Don't attempt reconnect if our last attempt was less than 30s ago
         if (time.time() - self.connect_ts) < 30:
             raise errors.SlackSocketConnectionError(
-                    'Failed to establish a websocket connection'
-                    )
+                'Failed to establish a websocket connection'
+            )
         log.warn('attempting to reconnect')
         self._thread = Thread(target=self._open)
         self._thread.start()
