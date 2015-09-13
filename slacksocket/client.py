@@ -155,7 +155,7 @@ class SlackSocket(object):
 
         for f in filters:
             if f not in event_types:
-                raise SlackSocketEventNameError('unknown event type %s\n \
+                raise errors.SlackSocketEventNameError('unknown event type %s\n \
                              see https://api.slack.com/events' % filters)
 
     def _get_websocket_url(self):
