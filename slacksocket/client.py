@@ -1,8 +1,9 @@
+import json
 import logging
 import websocket
 import requests
 import time
-from threading import Thread
+from threading import Thread, Lock
 
 import slacksocket.errors as errors
 from .config import slackurl, event_types
@@ -51,56 +52,55 @@ class SlackSocket(object):
      - slacktoken(str): token to authenticate with slack
      - translate(bool): yield events with human-readable names
         rather than id. default true
+     - event_filter(list): Slack event type(s) to filter by. Excluding a
+            filter returns all slack events. See https://api.slack.com/events
+            for a listing of valid event types.
     """
 
-    def __init__(self, slacktoken, translate=True):
+    def __init__(self, slacktoken, translate=True, event_filters='all'):
         if type(translate) != bool:
             raise TypeError('translate must be a boolean')
+        self._validate_filters(event_filters)
+
         self._eventq = []
         self._sendq = []
         self._translate = translate
+        self.event_filters = event_filters
 
         self.client = SlackClient(slacktoken)
         self.team, self.user = self._auth_test()
 
+        # used while reading/updating loaded_user property
+        self.load_user_lock = Lock()
+        self._load_users()
+        self.loaded_channels = {}
+        # used while reading/updating loaded_channels property
+        self.load_channel_lock = Lock()
+        self._load_channels()
+
         self._thread = Thread(target=self._open)
         self._thread.start()
 
-    def get_event(self, event_filter='all'):
+    def get_event(self):
         """
         return a single event object or block until an event is
         received and return it.
-        params:
-         - event_filter(list): Slack event type(s) to filter by. Excluding a
-            filter returns all slack events. See https://api.slack.com/events
-            for a listing of valid event types.
         """
-        self._validate_filters(event_filter)
-
         # return or block until we have something to return
         while True:
             try:
                 e = self._eventq.pop(0)
-                # return immediately if no filtering
-                if event_filter == 'all':
-                    return e
-                if e.type in event_filter:
-                    return e
+                return e
             except IndexError:
                 time.sleep(.2)
 
-    def events(self, event_filter='all'):
+    def events(self):
         """
         returns a blocking generator yielding Slack event objects
         params:
-         - event_filter(list): Slack event type(s) to filter by. Excluding a
-            filter returns all slack events. See https://api.slack.com/events
-            for a listing of valid event types.
         """
-        self._validate_filters(event_filter)
-
         while True:
-            e = self.get_event(event_filter=event_filter)
+            e = self.get_event()
             yield (e)
 
     def send_msg(self, text, channel_name=None, channel_id=None, confirm=True):
@@ -180,51 +180,123 @@ class SlackSocket(object):
         if user_id == 'USLACKBOT':
             return "slackbot"
 
-        members = self.client.get_json(slackurl['users'])['members']
+        name = self._find_user_name(user_id)
 
-        for user in members:
+        # if the user is not found may be a new user got added after cache is loaded so reload it
+        # one more time
+        if not name:
+            self._load_users()
+            name = self._find_user_name(user_id)
+
+        return name if name else "unknown"
+
+    def _load_users(self):
+        """
+        Makes a call to slack service to fetch users and updates the loaded_users property
+        """
+        self.load_user_lock.acquire()
+        try:
+            self.loaded_users = self.client.get_json(slackurl['users'])['members']
+        finally:
+            self.load_user_lock.release()
+
+    def _find_user_name(self, user_id):
+        """
+        Finds user's name by their id.
+        """
+        self.load_user_lock.acquire()
+        try:
+            users = self.loaded_users
+        finally:
+            self.load_user_lock.release()
+
+        for user in users:
             if user['id'] == user_id:
                 return user['name']
-        else:
-            return "unknown"
 
     def _lookup_channel_by_id(self, id):
         """
-        Look up a channelname from channel id
+        Looks up a channel name from its id
         params:
          - id(str): The channel id to lookup
         """
-        for ctype in ['channels', 'groups', 'ims']:
-            channel_list = self.client.get_json(slackurl[ctype])[ctype]
-            matching = [c for c in channel_list if c['id'] == id]
-            if matching:
-                channel = matching[0]
-                if ctype == 'ims':
-                    cname = self._lookup_user(channel['user'])
-                else:
-                    cname = channel['name']
+        channel_type, matching = self._find_channel(['channels', 'groups', 'ims'],
+                                                    "id",
+                                                    id)
 
-                return {'channel_type': ctype,
-                        'channel_name': cname}
+        # may be channel got created after the cache got loaded so reload the it one more time
+        if not matching:
+            self._load_channels()
+            channel_type, matching = self._find_channel(['channels', 'groups', 'ims'],
+                                                        "id",
+                                                        id)
+
+        if matching:
+            channel = matching[0]
+            if channel_type == 'ims':
+                channel_name = self._lookup_user(channel['user'])
+            else:
+                channel_name = channel['name']
+
+            return {'channel_type': channel_type,
+                    'channel_name': channel_name}
 
         # if no matches were found
         return {'channel_type': 'unknown',
                 'channel_name': 'unknown'}
 
-    def _lookup_channel_by_name(self, cname):
+    def _load_channels(self):
+        """
+        Makes a call to slack service to fetch all channel information.
+        """
+        self.load_channel_lock.acquire()
+        try:
+            for channel_type in ['channels', 'groups', 'ims']:
+                channel_list = self.client.get_json(slackurl[channel_type])[channel_type]
+                self.loaded_channels[channel_type] = channel_list
+        finally:
+            self.load_channel_lock.release()
+
+    def _find_channel(self, channel_types, channel_key, value):
+        """
+        filters channels present in the cache using key and value
+        """
+        self.load_channel_lock.acquire()
+        try:
+            channels = self.loaded_channels
+        finally:
+            self.load_channel_lock.release()
+
+        for channel_type, channel_list in channels.items():
+            if channel_type not in channel_types:
+                continue;
+            matching = [c for c in channel_list if c[channel_key] == value]
+            if matching:
+                return channel_type, matching
+
+        return None
+
+    def _lookup_channel_by_name(self, name):
         """
         Look up a channel id from a given name
         params:
-         - cname(str): The channel name to lookup
+         - name(str): The channel name to lookup
         """
-        for ctype in ['channels', 'groups']:
-            channel_list = self.client.get_json(slackurl[ctype])[ctype]
-            matching = [c for c in channel_list if c['name'] == cname]
-            if matching:
-                channel = matching[0]
+        channel_type, matching = self._find_channel(['channels', 'groups'],
+                                                    "name",
+                                                    name)
+        # may be channel got created after the cache got loaded so reload the it one more time
+        if not matching:
+            self._load_channels()
+            channel_type, matching = self._find_channel(['channels', 'groups'],
+                                                        "name",
+                                                        name)
 
-                return {'channel_type': ctype,
-                        'channel_id': channel['id']}
+        if matching:
+            channel = matching[0]
+
+            return {'channel_type': channel_type,
+                    'channel_id': channel['id']}
 
         # if no matches were found
         return {'channel_type': 'unknown',
@@ -251,7 +323,15 @@ class SlackSocket(object):
 
     def _event_handler(self, ws, event_json):
         log.debug('event recieved: %s' % event_json)
-        event = SlackEvent(event_json)
+
+        json_object = json.loads(event_json)
+
+        if self.event_filters != "all" and json_object.get("type") not in self.event_filters:
+            log.debug("Ignoring the event {} as it not matching event_filers {}"
+                      .format(event_json, self.event_filters))
+            return
+
+        event = SlackEvent(event_json, json_object)
 
         # TODO: make use of ctype returned from _lookup_channel
         if self._translate:
