@@ -2,23 +2,23 @@ import json
 import re
 import time
 
-translate_map = {ord(c): None for c in \
-                 map(chr, list(range(256))) if not c.isalnum()}
+translate_map = {ord(c): None for c in map(chr, list(range(256))) if not c.isalnum()}
 
 
 class SlackEvent(object):
     """
     Event received from the Slack RTM API
     params:
-     - event_json(json)
+     - event_json(json string)
+     - event_obj(json object)
     attributes:
      - type(type): Slack event type
      - ts(float): UTC event timestamp
     """
 
-    def __init__(self, event_json):
+    def __init__(self, event_json, event_obj):
         self.json = event_json
-        self.event = json.loads(event_json)
+        self.event = event_obj
         self.mentions = []
 
         if 'type' in self.event:
