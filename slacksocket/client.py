@@ -99,9 +99,14 @@ class SlackSocket(object):
         returns a blocking generator yielding Slack event objects
         params:
         """
-        while True:
-            e = self.get_event()
-            yield (e)
+        done = False
+        while not done:
+            try:
+                e = self.get_event()
+                yield (e)
+            except KeyboardInterrupt:
+                done = True
+        self.close()
 
     def send_msg(self, text, channel_name=None, channel_id=None, confirm=True):
         """
@@ -129,6 +134,10 @@ class SlackSocket(object):
                         return msg
         else:
             return msg
+
+    def close(self):
+        self.ws.on_close = lambda ws: True
+        self.ws.close()
 
     #######
     # Internal Methods
