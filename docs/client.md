@@ -11,16 +11,13 @@ s = SlackSocket('<slack-token>')
 
 * slacktoken (str): token to authenticate with slack
 * translate (bool): yield events with human-readable user/channel names rather than id. default true
+* event_filter (list): Slack event type(s) to filter by. Excluding a filter returns all slack events. See https://api.slack.com/events for a listing of valid event types.
 
 **Methods**
 
 ## get_event
 
 Return a single event object in the order received or block until an event is received and return it.
-
-**Params**:
-
-* event_filter (list): Slack event type(s) to filter by. Excluding a filter returns all slack events. See https://api.slack.com/events for a listing of valid event types.
 
 **Returns** (obj): SlackEvent object
 
@@ -40,10 +37,6 @@ Send a message via Slack RTM socket and wait for confirmation it was received. O
 ## events
 
 Return a generator yielding SlackEvent objects
-
-**Params**:
-
-* event_filter (list): Slack event type(s) to filter by. Excluding a filter returns all slack events. See https://api.slack.com/events for a listing of valid event types.
 
 **Returns** (generator): A generator of SlackEvent objects
 
