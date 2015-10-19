@@ -79,6 +79,7 @@ class SlackSocket(object):
         self._load_channels()
 
         self._thread = Thread(target=self._open)
+        self._thread.daemon = True
         self._thread.start()
 
     def get_event(self):
