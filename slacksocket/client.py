@@ -14,6 +14,7 @@ log = logging.getLogger('slacksocket')
 
 class SlackClient(requests.Session):
     """
+    A very small client for connecting to the Slack web API
     """
     def __init__(self, token):
         super(SlackClient, self).__init__()
