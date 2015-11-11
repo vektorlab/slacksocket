@@ -27,7 +27,7 @@ class SlackClient(requests.Session):
         try:
             res.raise_for_status()
         except requests.exceptions.HTTPError as e:
-            raise errors.SlackSocketAPIError(e)
+            raise errors.SlackAPIError(e)
 
         rj = res.json()
 
@@ -38,13 +38,13 @@ class SlackClient(requests.Session):
         # process error
         if rj['error'] == 'migration_in_progress':
             if self._attempts > max_attempts:
-                raise errors.SlackSocketAPIError('Max retries exceeded')
+                raise errors.SlackAPIError('Max retries exceeded')
             log.info('socket in migration state, retrying')
             time.sleep(self._attempts)
             self._attempts += 1
             return self.get_json(url)
         else:
-            raise errors.SlackSocketAPIError('Error from slack api:\n %s' % res.text)
+            raise errors.SlackAPIError('Error from slack api:\n %s' % res.text)
 
 
     def _post(self, url, payload=None):
