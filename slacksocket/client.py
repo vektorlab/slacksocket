@@ -356,7 +356,7 @@ class SlackSocket(object):
                       .format(event_json, self.event_filters))
             return
 
-        event = SlackEvent(event_json, json_object)
+        event = SlackEvent(json_object)
 
         # TODO: make use of ctype returned from _lookup_channel
         if self._translate:
