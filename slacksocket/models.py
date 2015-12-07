@@ -9,15 +9,13 @@ class SlackEvent(object):
     """
     Event received from the Slack RTM API
     params:
-     - event_json(json string)
      - event_obj(json object)
     attributes:
      - type(type): Slack event type
      - ts(float): UTC event timestamp
     """
 
-    def __init__(self, event_json, event_obj):
-        self.json = event_json
+    def __init__(self, event_obj):
         self.event = event_obj
         self.mentions = []
 
@@ -31,6 +29,10 @@ class SlackEvent(object):
 
         if 'text' in self.event:
             self.mentions = self._get_mentions(self.event['text'])
+
+    @property
+    def json(self):
+        return json.dumps(self.event)
 
     def _get_mentions(self, text):
         mentions = re.findall('<@\w+>', text)
