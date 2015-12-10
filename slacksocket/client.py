@@ -79,6 +79,7 @@ class SlackSocket(object):
 
         self._eventq = []
         self._sendq = []
+        self.connected = False
         self._translate = translate
         self.event_filters = event_filters
 
@@ -96,6 +97,10 @@ class SlackSocket(object):
         self._thread = Thread(target=self._open)
         self._thread.daemon = True
         self._thread.start()
+
+        # wait for websocket connection to be established before returning
+        while not self.connected:
+            time.sleep(.2)
 
     def get_event(self):
         """
@@ -366,6 +371,7 @@ class SlackSocket(object):
 
     def _open_handler(self, ws):
         log.info('websocket connection established')
+        self.connected = True
         self.connect_ts = time.time()
 
     def _error_handler(self, ws, error):
