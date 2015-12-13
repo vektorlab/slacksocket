@@ -1,4 +1,4 @@
-site_name: slacksocket Documenation
-site_url: slacksocket.readthedocs.org
+site_name: SlackSocket Documenation
+site_url: https://slacksocket.readthedocs.org
 repo_url: https://github.com/bcicen/slacksocket
 theme: readthedocs
