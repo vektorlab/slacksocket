@@ -1,7 +1,7 @@
 import re
 import sys
 import json
-import time
+from time import time
 
 translate_map = { ord(c): None for c in map(chr, list(range(256))) if not c.isalnum() }
 
@@ -26,7 +26,7 @@ class SlackEvent(object):
         if 'ts' in self.event:
             self.ts = self.event['ts']
         else:
-            self.ts = int(time.time())
+            self.ts = int(time())
 
         if 'text' in self.event:
             self.mentions = self._get_mentions(self.event['text'])
