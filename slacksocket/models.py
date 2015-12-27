@@ -1,8 +1,9 @@
-import json
 import re
+import sys
+import json
 import time
 
-translate_map = {ord(c): None for c in map(chr, list(range(256))) if not c.isalnum()}
+translate_map = { ord(c): None for c in map(chr, list(range(256))) if not c.isalnum() }
 
 
 class SlackEvent(object):
@@ -36,10 +37,14 @@ class SlackEvent(object):
 
     def _get_mentions(self, text):
         mentions = re.findall('<@\w+>', text)
-        if mentions:
-            return [str(m).translate(translate_map) for m in mentions]
-        else:
-            return []
+
+        if mentions and sys.version_info.major == 2:
+            return [ unicode(m).translate(translate_map) for m in mentions ]
+
+        if mentions and sys.version_info.major == 3:
+            return [ str(m).translate(translate_map) for m in mentions ]
+
+        return []
 
 
 class SlackMsg(object):
