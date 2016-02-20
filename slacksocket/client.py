@@ -12,42 +12,6 @@ from .models import SlackEvent, SlackMsg
 log = logging.getLogger('slacksocket')
 
 
-class SlackClient(requests.Session):
-    """
-    A very small client for connecting to the Slack web API
-    """
-    def __init__(self, token):
-        super(SlackClient, self).__init__()
-        self.token = token
-        self._attempts = 0
-
-    def get_json(self, url, method='GET', max_attempts=3, **params):
-        params['token'] = self.token
-        res = self.request(method, url, params=params)
-
-        try:
-            res.raise_for_status()
-        except requests.exceptions.HTTPError as e:
-            raise errors.SlackAPIError(e)
-
-        rj = res.json()
-
-        if rj['ok']:
-            self._attempts = 0
-            return rj
-
-        # process error
-        if rj['error'] == 'migration_in_progress':
-            if self._attempts > max_attempts:
-                raise errors.SlackAPIError('Max retries exceeded')
-            log.info('socket in migration state, retrying')
-            time.sleep(self._attempts)
-            self._attempts += 1
-            return self.get_json(url, method=method, **params)
-        else:
-            raise errors.SlackAPIError('Error from slack api:\n %s' % res.text)
-
-
 class SlackSocket(object):
     """
     SlackSocket class provides a streaming interface to the Slack Real Time
@@ -72,7 +36,8 @@ class SlackSocket(object):
         self._translate = translate
         self.event_filters = event_filters
 
-        self.client = SlackClient(slacktoken)
+        self._requests = requests.Session()
+        self._slacktoken = slacktoken
         self.team, self.user = self._auth_test()
 
         # used while reading/updating loaded_user property
@@ -199,13 +164,13 @@ class SlackSocket(object):
         """
         Retrieve a fresh websocket url from slack api
         """
-        return self.client.get_json(slackurl['rtm'])['url']
+        return self._call_slack_rtm(slackurl['rtm'])['url']
 
     def _auth_test(self):
         """
         Perform API auth test and get our user and team
         """
-        test = self.client.get_json(slackurl['test'])
+        test = self._call_slack_rtm(slackurl['test'])
 
         if self._translate:
             return (test['team'], test['user'])
@@ -235,7 +200,8 @@ class SlackSocket(object):
         """
         self.load_user_lock.acquire()
         try:
-            self.loaded_users = self.client.get_json(slackurl['users'])['members']
+            response = self._call_slack_rtm(slackurl['users'])
+            self.loaded_users = response['members']
         finally:
             self.load_user_lock.release()
 
@@ -302,7 +268,8 @@ class SlackSocket(object):
         self.load_channel_lock.acquire()
         try:
             for channel_type in ['channels', 'groups', 'ims']:
-                channel_list = self.client.get_json(slackurl[channel_type])[channel_type]
+                response = self._call_slack_rtm(slackurl[channel_type])
+                channel_list = response[channel_type]
                 self.loaded_channels[channel_type] = channel_list
         finally:
             self.load_channel_lock.release()
@@ -356,11 +323,10 @@ class SlackSocket(object):
         """
         Open a direct message channel with a user
         """
-        result = self.client.get_json(slackurl['im.open'],
+        result = self._call_slack_rtm(slackurl['im.open'],
                                       method='POST',
                                       user=user_id)
         return result['channel']
-
 
     def _translate_event(self, event):
         """
@@ -417,3 +383,39 @@ class SlackSocket(object):
         log.warn('attempting to reconnect')
         self._thread = Thread(target=self._open)
         self._thread.start()
+
+    #######
+    # Slack Web API Interface
+    #######
+
+    def _call_slack_rtm(self, url, method='GET', max_attempts=3, **params):
+        if max_attempts == 0:
+            raise errors.SlackAPIError('Max retries exceeded')
+        elif max_attempts < 0:
+            message = 'Expected max_attempts >= 0, got {0}'\
+                .format(max_attempts)
+            raise ValueError(message)
+
+        params['token'] = self._slacktoken
+        res = self._requests.request(method, url, params=params)
+
+        try:
+            res.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            raise errors.SlackAPIError(e)
+
+        rj = res.json()
+
+        if rj['ok']:
+            return rj
+
+        # process error
+        if rj['error'] == 'migration_in_progress':
+            log.info('socket in migration state, retrying')
+            time.sleep(2)
+            return self._call_slack_rtm(url,
+                                        method=method,
+                                        max_attempts=max_attempts - 1,
+                                        **params)
+        else:
+            raise errors.SlackAPIError('Error from slack api:\n %s' % res.text)
