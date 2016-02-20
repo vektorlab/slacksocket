@@ -21,8 +21,9 @@ class SlackClient(requests.Session):
         self.token = token
         self._attempts = 0
 
-    def get_json(self, url, max_attempts=3):
-        res = self._get(url)
+    def get_json(self, url, method='GET', max_attempts=3, **params):
+        params['token'] = self.token
+        res = self.request(method, url, params=params)
 
         try:
             res.raise_for_status()
@@ -42,21 +43,9 @@ class SlackClient(requests.Session):
             log.info('socket in migration state, retrying')
             time.sleep(self._attempts)
             self._attempts += 1
-            return self.get_json(url)
+            return self.get_json(url, method=method, **params)
         else:
             raise errors.SlackAPIError('Error from slack api:\n %s' % res.text)
-
-
-    def _post(self, url, payload=None):
-        if payload:
-            return self.post(url, params={'token': self.token}, payload=payload)
-        return self.post(url, params={'token': self.token})
-
-    def _get(self, url):
-        return self.get(url, params={'token': self.token})
-
-    def _check_response(self, res):
-        return rj
 
 
 class SlackSocket(object):
@@ -156,6 +145,26 @@ class SlackSocket(object):
         else:
             return msg
 
+    def get_im_channel(self, user_name):
+        """
+        Get a direct message channel to a particular user. Create
+        one if it does not exist.
+        """
+        user_id = self._find_user_id(user_name)
+        print("getting im_channel for user {0}".format(user_id))
+        channel_info = self._find_channel(['ims'], 'user', user_id)
+
+        if channel_info is None:
+            channel = self._open_im_channel(user_id)
+
+        else:
+            (channel_type, matching) = channel_info
+            assert channel_type == 'ims'
+            assert len(matching) == 1
+            channel = matching[0]
+
+        return channel
+
     def close(self):
         self.ws.on_close = lambda ws: True
         self.ws.close()
@@ -244,6 +253,17 @@ class SlackSocket(object):
             if user['id'] == user_id:
                 return user['name']
 
+    def _find_user_id(self, username):
+        """
+        Finds user's id by their name.
+        """
+        with self.load_user_lock:
+            users = self.loaded_users
+
+        for user in users:
+            if user['name'] == username:
+                return user['id']
+
     def _lookup_channel_by_id(self, id):
         """
         Looks up a channel name from its id
@@ -331,6 +351,16 @@ class SlackSocket(object):
         # if no matches were found
         return {'channel_type': 'unknown',
                 'channel_id': 'unknown'}
+
+    def _open_im_channel(self, user_id):
+        """
+        Open a direct message channel with a user
+        """
+        result = self.client.get_json(slackurl['im.open'],
+                                      method='POST',
+                                      user=user_id)
+        return result['channel']
+
 
     def _translate_event(self, event):
         """

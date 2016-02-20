@@ -5,7 +5,8 @@ slackurl = {'test': slack + 'auth.test',
             'users': slack + 'users.list',
             'channels': slack + 'channels.list',
             'groups': slack + 'groups.list',
-            'ims': slack + 'im.list'}
+            'ims': slack + 'im.list',
+            'im.open': slack + 'im.open'}
 
 # event types as given in https://api.slack.com/events
 event_types = ['hello',
