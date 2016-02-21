@@ -40,6 +40,16 @@ Send a message via Slack RTM socket and wait for confirmation it was received. O
 
 **Returns** (obj): SlackMsg object
 
+## get_im_channel
+
+Get a direct message channel for a user. Open one if it does not already exist.
+
+**Params**:
+
+* username (str): Display name of the user to message
+
+**Returns** (dict): dictionary with the channel information
+
 # SlackEvent
 
 Event object received from SlackSocket
