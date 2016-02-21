@@ -1,6 +1,6 @@
 # Slacksocket
 
-[![Documentation Status](https://readthedocs.org/projects/slacksocket/badge/?version=latest)](https://readthedocs.org/projects/slacksocket/?badge=latest)
+[![Documentation Status](https://readthedocs.org/projects/slacksocket/badge/?version=latest)](http://slacksocket.readthedocs.org/en/latest/client/)
 
 Slacksocket is a Python interface to the Slack Real Time Messaging(RTM) API
 
@@ -38,4 +38,4 @@ True
 
 # Documentation
 
-Full documentation is available in the docs/ folder or at http://slacksocket.readthedocs.org/en/latest/
+Full documentation is available on [ReadTheDocs](http://slacksocket.readthedocs.org/en/latest/client/)
