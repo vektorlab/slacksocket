@@ -116,7 +116,6 @@ class SlackSocket(object):
         one if it does not exist.
         """
         user_id = self._find_user_id(user_name)
-        print("getting im_channel for user {0}".format(user_id))
         channel_info = self._find_channel(['ims'], 'user', user_id)
 
         if channel_info is None:
