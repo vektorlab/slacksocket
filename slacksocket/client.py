@@ -1,8 +1,9 @@
+import ssl
 import json
+import time
 import logging
 import websocket
 import requests
-import time
 from threading import Thread, Lock
 
 import slacksocket.errors as errors
@@ -145,7 +146,7 @@ class SlackSocket(object):
                                          on_error=self._error_handler,
                                          on_open=self._open_handler,
                                          on_close=self._exit_handler)
-        self.ws.run_forever()
+        self.ws.run_forever(sslopt={'cert_reqs': ssl.CERT_NONE})
 
     def _validate_filters(self, filters):
         if filters == 'all':
