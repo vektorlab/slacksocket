@@ -50,6 +50,13 @@ Get a direct message channel for a user. Open one if it does not already exist.
 
 **Returns** (dict): dictionary with the channel information
 
+**Example**
+```python
+s = SlackSocket(<token>)
+s.get_im_channel('my_user')
+{'is_user_deleted': False, 'id': 'D0L7XNQCV', 'is_im': True, 'user': 'U071Y0CSZ', 'created': 1454542620}
+```
+
 # SlackEvent
 
 Event object received from SlackSocket
