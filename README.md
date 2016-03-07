@@ -2,17 +2,17 @@
 
 [![Documentation Status](https://readthedocs.org/projects/slacksocket/badge/?version=latest)](http://slacksocket.readthedocs.org/en/latest/client/)
 
-Slacksocket is a Python interface to the Slack Real Time Messaging(RTM) API
+Python interface to the Slack Real Time Messaging(RTM) API
 
-# Install
+## Install
 
 ```bash
 pip install slacksocket
 ```
 
-# Usage
+## Usage
 
-## Retrieving events/messages
+### Retrieving events/messages
 ```python
 from slacksocket import SlackSocket
 
@@ -22,7 +22,7 @@ for event in s.events():
     print(event.json)
 ```
 
-## Sending messages
+### Sending messages
 ```python
 from slacksocket import SlackSocket
 
@@ -36,6 +36,6 @@ print(msg.sent)
 True
 ```
 
-# Documentation
+## Documentation
 
 Full documentation is available on [ReadTheDocs](http://slacksocket.readthedocs.org/en/latest/client/)
