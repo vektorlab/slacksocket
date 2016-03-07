@@ -1,4 +1,8 @@
 site_name: SlackSocket Documenation
+site_description: Python interface to the Slack Real Time Messaging(RTM) API
 site_url: https://slacksocket.readthedocs.org
-repo_url: https://github.com/bcicen/slacksocket
+repo_url: https://github.com/vektorlab/slacksocket
 theme: readthedocs
+pages:
+- Home: index.md
+- Client: client.md
