@@ -1,10 +1,17 @@
 # SlackSocket Client
 
-To instantiate a `SlackSocket` class that will setup an RTM websocket:
+To instantiate a SlackSocket object that will setup an RTM websocket:
 
 ```python
 from slacksocket import SlackSocket
 s = SlackSocket('<slack-token>')
+```
+
+Likewise, SlackSocket can be used as a context:
+```python
+from slacksocket import SlackSocket
+with SlackSocket('<slack-token>') as s:
+    s.send_msg(text='hello', channel_name='general')
 ```
 
 **Params**:
