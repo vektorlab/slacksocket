@@ -57,6 +57,12 @@ class SlackSocket(object):
         while not self.connected:
             time.sleep(.2)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        self.close()
+
     def get_event(self):
         """
         return a single event object or block until an event is
