@@ -1,6 +1,6 @@
 # Slacksocket
 
-[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.png?style=flat)](http://slacksocket.readthedocs.org/en/latest/client/) [![PyPI version](https://badge.fury.io/py/slacksocket.png)](https://badge.fury.io/py/slacksocket)
+[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](http://slacksocket.readthedocs.org/en/latest/client/) [![PyPI version](https://badge.fury.io/py/slacksocket.svg)](https://badge.fury.io/py/slacksocket)
 
 Python interface to the Slack Real Time Messaging(RTM) API
 
