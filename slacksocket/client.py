@@ -297,7 +297,7 @@ class SlackSocket(object):
             if matching:
                 return channel_type, matching
 
-        return None
+        return [None, False]
 
     def _lookup_channel_by_name(self, name):
         """
