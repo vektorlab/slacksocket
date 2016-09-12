@@ -6,6 +6,11 @@ import websocket
 import requests
 from threading import Thread, Lock
 
+try:
+    import queue as Queue # python3
+except ImportError:
+    import Queue # python2
+
 import slacksocket.errors as errors
 from .config import slackurl, event_types
 from .models import SlackEvent, SlackMsg
@@ -31,7 +36,8 @@ class SlackSocket(object):
             raise TypeError('translate must be a boolean')
         self._validate_filters(event_filters)
 
-        self._eventq = []
+        self._eventq = Queue.Queue()
+        # self._eventq = []
         self._sendq = []
         self.connected = False
         self._translate = translate
@@ -63,20 +69,15 @@ class SlackSocket(object):
     def __exit__(self, exc_type, exc_value, exc_traceback):
         self.close()
 
-    def get_event(self):
+    def get_event(self, timeout=None):
         """
         return a single event object or block until an event is
         received and return it.
         """
-        # return or block until we have something to return
-        while True:
-            try:
-                e = self._eventq.pop(0)
-                return e
-            except IndexError:
-                time.sleep(.2)
+        # return or block until we have something to return or timeout
+        return self._eventq.get(timeout=timeout)
 
-    def events(self):
+    def events(self, timeout=None):
         """
         returns a blocking generator yielding Slack event objects
         params:
@@ -84,10 +85,11 @@ class SlackSocket(object):
         done = False
         while not done:
             try:
-                e = self.get_event()
+                e = self.get_event(timeout)
                 yield (e)
-            except KeyboardInterrupt:
+            except (KeyboardInterrupt, Queue.Empty):
                 done = True
+
         self.close()
 
     def send_msg(self, text, channel_name=None, channel_id=None, confirm=True):
@@ -369,7 +371,8 @@ class SlackSocket(object):
         if self._translate:
             event = self._translate_event(event)
 
-        self._eventq.append(event)
+        # self._eventq.append(event)
+        self._eventq.put(event)
 
     def _open_handler(self, ws):
         log.info('websocket connection established')
