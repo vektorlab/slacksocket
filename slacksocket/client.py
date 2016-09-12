@@ -4,8 +4,12 @@ import time
 import logging
 import websocket
 import requests
-import Queue
 from threading import Thread, Lock
+
+try:
+    import queue as Queue # python3
+except ImportError:
+    import Queue # python2
 
 import slacksocket.errors as errors
 from .config import slackurl, event_types
