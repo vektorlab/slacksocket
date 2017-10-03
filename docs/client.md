@@ -26,11 +26,19 @@ with SlackSocket('<slack-token>') as s:
 
 Return a single event object in the order received or block until an event is received and return it.
 
+**Params**:
+
+* timeout(int): optional max time in seconds to block waiting for new event
+
 **Returns** (obj): SlackEvent object
 
 ## events
 
 Return a generator yielding SlackEvent objects
+
+**Params**:
+
+* idle_timeout(int): optional max time in seconds to wait for new events
 
 **Returns** (generator): A generator of SlackEvent objects
 
