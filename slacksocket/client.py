@@ -51,6 +51,7 @@ class SlackSocket(object):
         self.load_user_lock = Lock()
         self._load_users()
         self.loaded_channels = {}
+
         # used while reading/updating loaded_channels property
         self.load_channel_lock = Lock()
         self._load_channels()
@@ -73,21 +74,33 @@ class SlackSocket(object):
         """
         return a single event object or block until an event is
         received and return it.
+         - timeout(int): max time, in seconds, to block waiting for new event
         """
         # return or block until we have something to return or timeout
         return self._eventq.get(timeout=timeout)
 
-    def events(self, timeout=None):
+    def events(self, idle_timeout=None):
         """
         returns a blocking generator yielding Slack event objects
         params:
+         - idle_timeout(int): max time, in seconds, to wait for a new event
         """
+        idle = 0 # idle time counter
+        interval = .2 # poll interval
         done = False
+
         while not done:
             try:
-                e = self.get_event(timeout)
+                e = self.get_event(interval)
+                idle = 0
                 yield (e)
-            except (KeyboardInterrupt, Queue.Empty):
+            except Queue.Empty:
+                idle += interval
+            except KeyboardInterrupt:
+                done = True
+
+            if idle_timeout and idle >= idle_timeout:
+                log.info('idle timeout reached for events()')
                 done = True
 
         self.close()
