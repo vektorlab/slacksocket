@@ -357,8 +357,14 @@ class SlackSocket(object):
             event.event['user'] = self._lookup_user(event.event['user'])
 
         if 'channel' in event.event:
-            c = self._lookup_channel_by_id(event.event['channel'])
-            event.event['channel'] = c['channel_name']
+            chan = event.event['channel']
+            if isinstance(chan, dict):
+                # if channel is newly created, a channel object is returned from api
+                # instead of a channel id
+                event.event['channel'] = chan['name']
+            else:
+                c = self._lookup_channel_by_id(chan)
+                event.event['channel'] = c['channel_name']
 
         event.mentions = [self._lookup_user(u) for u in event.mentions]
 
