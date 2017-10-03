@@ -1,2 +1,2 @@
-__version__ = (0, 9)
-version = '%d.%d' % __version__
+__version__ = (0, 9, 1)
+version = '%d.%d.%d' % __version__
