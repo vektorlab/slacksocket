@@ -1,6 +1,7 @@
 import ssl
 import json
 import time
+import signal
 import logging
 import websocket
 from threading import Thread, Lock
@@ -36,10 +37,11 @@ class SlackSocket(object):
             raise TypeError('translate must be a boolean')
         self._validate_filters(event_filters)
 
-        self._eventq = Queue.Queue()
-        # self._eventq = []
-        self._sendq = []
+        self.ws = None
         self.connected = False
+        self._stopped = False
+        self._eventq = Queue.Queue()
+        self._sendq = []
         self._translate = translate
         self.event_filters = event_filters
 
@@ -60,8 +62,12 @@ class SlackSocket(object):
         self._thread.daemon = True
         self._thread.start()
 
+        # trap signals for graceful shutdown
+        signal.signal(signal.SIGINT, self._sig_handler)
+        signal.signal(signal.SIGTERM, self._sig_handler)
+
         # wait for websocket connection to be established before returning
-        while not self.connected:
+        while not self.connected and not self._stopped:
             time.sleep(.2)
 
     def __enter__(self):
@@ -89,7 +95,7 @@ class SlackSocket(object):
         interval = .2 # poll interval
         done = False
 
-        while not done:
+        while not done and not self._stopped:
             try:
                 e = self.get_event(interval)
                 idle = 0
@@ -102,8 +108,7 @@ class SlackSocket(object):
             if idle_timeout and idle >= idle_timeout:
                 log.info('idle timeout reached for events()')
                 done = True
-
-        self.close()
+                self.close()
 
     def send_msg(self, text, channel_name=None, channel_id=None, confirm=True):
         """
@@ -152,12 +157,18 @@ class SlackSocket(object):
         return channel
 
     def close(self):
-        self.ws.on_close = lambda ws: True
-        self.ws.close()
+        self._stopped = True
+        if self.ws:
+            self.ws.on_close = lambda ws: True
+            self.ws.close()
 
     #######
     # Internal Methods
     #######
+
+    def _sig_handler(self, signal, frame):
+        log.debug("caugh signal, exiting")
+        self.close()
 
     def _open(self):
         # reset id for sending messages with each new socket
