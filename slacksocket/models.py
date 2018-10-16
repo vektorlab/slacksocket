@@ -20,16 +20,9 @@ class SlackEvent(object):
         self.event = event_obj
         self.mentions = []
 
-        if 'type' in self.event:
-            self.type = self.event['type']
-
-        if 'ts' in self.event:
-            self.ts = self.event['ts']
-        else:
-            self.ts = int(time())
-
-        if 'text' in self.event:
-            self.mentions = self._get_mentions(self.event['text'])
+        self.type = self.event.get('type')
+        self.ts = self.event.get('ts', int(time()))
+        self.mentions = self._get_mentions(self.event.get('text', ''))
 
     @property
     def json(self):

@@ -18,6 +18,11 @@ from .webclient import WebClient
 
 log = logging.getLogger('slacksocket')
 
+STATE_STOPPED = 0
+STATE_INITIALIZING = 1
+STATE_INITIALIZED = 2
+STATE_CONNECTING = 3
+STATE_CONNECTED = 4
 
 class SlackSocket(object):
     """
@@ -32,22 +37,31 @@ class SlackSocket(object):
             for a listing of valid event types.
     """
 
+
+
     def __init__(self, slacktoken, translate=True, event_filters='all'):
         if type(translate) != bool:
             raise TypeError('translate must be a boolean')
         self._validate_filters(event_filters)
 
         self.ws = None
-        self.connected = False
-        self._stopped = False
+
+        # internal state
+        self._state = STATE_INITIALIZING
+        self._error = None
+
+        self._config = {
+          'translate': translate,
+          'filters': event_filters,
+          'user': None,
+          'team': None,
+          'ws_url': None,
+          }
+
         self._eventq = Queue.Queue()
         self._sendq = []
-        self._translate = translate
-        self.event_filters = event_filters
 
         self._webclient = WebClient(slacktoken)
-        self._slacktoken = slacktoken
-        self.team, self.user = self._auth_test()
 
         # used while reading/updating loaded_user property
         self.load_user_lock = Lock()
@@ -58,17 +72,37 @@ class SlackSocket(object):
         self.load_channel_lock = Lock()
         self._load_channels()
 
-        self._thread = Thread(target=self._open)
-        self._thread.daemon = True
-        self._thread.start()
-
         # trap signals for graceful shutdown
         signal.signal(signal.SIGINT, self._sig_handler)
         signal.signal(signal.SIGTERM, self._sig_handler)
 
         # wait for websocket connection to be established before returning
-        while not self.connected and not self._stopped:
+        while self._state != STATE_CONNECTED:
+            self._handle_state()
+
+    def _handle_state(self):
+        try:
+            self._process_state()
+        except Exception as ex:
+            self._error = ex
+            self.close()
+
+    def _process_state(self):
+        if self._state == STATE_INITIALIZING:
+            self.team, self.user = self._auth_test()
+            self._state = STATE_INITIALIZED
+            return
+
+        if self._state == STATE_INITIALIZED:
+            ws_url = self._get_websocket_url()
+            self._thread = Thread(target=self._open, args=(ws_url,))
+            self._thread.daemon = True
+            self._thread.start()
+            return
+
+        if self._state == STATE_CONNECTING:
             time.sleep(.2)
+            return
 
     def __enter__(self):
         return self
@@ -95,7 +129,7 @@ class SlackSocket(object):
         interval = .2 # poll interval
         done = False
 
-        while not done and not self._stopped:
+        while not done and self._state > STATE_STOPPED:
             try:
                 e = self.get_event(interval)
                 idle = 0
@@ -157,10 +191,12 @@ class SlackSocket(object):
         return channel
 
     def close(self):
-        self._stopped = True
+        self._state = STATE_STOPPED
         if self.ws:
             self.ws.on_close = lambda ws: True
             self.ws.close()
+        if self._error:
+            raise self._error
 
     #######
     # Internal Methods
@@ -169,16 +205,6 @@ class SlackSocket(object):
     def _sig_handler(self, signal, frame):
         log.debug("caugh signal, exiting")
         self.close()
-
-    def _open(self):
-        # reset id for sending messages with each new socket
-        self._send_id = 0
-        self.ws = websocket.WebSocketApp(self._get_websocket_url(),
-                                         on_message=self._event_handler,
-                                         on_error=self._error_handler,
-                                         on_open=self._open_handler,
-                                         on_close=self._exit_handler)
-        self.ws.run_forever(sslopt={'cert_reqs': ssl.CERT_NONE})
 
     def _validate_filters(self, filters):
         if filters == 'all':
@@ -204,7 +230,7 @@ class SlackSocket(object):
         """
         test = self._webclient.get(slackurl['test'])
 
-        if self._translate:
+        if self._config['translate']:
             return (test['team'], test['user'])
         else:
             return (test['team_id'], test['user_id'])
@@ -381,32 +407,47 @@ class SlackSocket(object):
 
         return event
 
+    # return whether a given event should be omitted from emission,
+    # based on configured filters
+    def _filter_event(self, event):
+        if self._config['filters'] == 'all':
+            return False
+        if event.type in self._config['filters']:
+            return False
+        return True
+
     #######
     # Websocket Handlers
     #######
 
+    def _open(self, ws_url):
+        # reset id for sending messages with each new socket
+        self._send_id = 0
+        self.ws = websocket.WebSocketApp(ws_url,
+                                         on_message=self._event_handler,
+                                         on_error=self._error_handler,
+                                         on_open=self._open_handler,
+                                         on_close=self._exit_handler)
+        self.ws.run_forever(sslopt={'cert_reqs': ssl.CERT_NONE})
+
     def _event_handler(self, ws, event_json):
         log.debug('event recieved: %s' % event_json)
 
-        json_object = json.loads(event_json)
+        event = SlackEvent(json.loads(event_json))
 
-        if self.event_filters != "all" and json_object.get("type") not in self.event_filters:
-            log.debug("Ignoring the event {} as it not matching event_filers {}"
-                      .format(event_json, self.event_filters))
+        if self._filter_event(event):
+            log.debug('ignoring filtered event: {}'.format(event.event))
             return
 
-        event = SlackEvent(json_object)
-
         # TODO: make use of ctype returned from _lookup_channel
-        if self._translate:
+        if self._config['translate']:
             event = self._translate_event(event)
 
-        # self._eventq.append(event)
         self._eventq.put(event)
 
     def _open_handler(self, ws):
         log.info('websocket connection established')
-        self.connected = True
+        self._state = STATE_CONNECTED
         self.connect_ts = time.time()
 
     def _error_handler(self, ws, error):
@@ -416,9 +457,11 @@ class SlackSocket(object):
         log.warn('websocket connection closed')
         # Don't attempt reconnect if our last attempt was less than 30s ago
         if (time.time() - self.connect_ts) < 30:
-            raise errors.SlackSocketConnectionError(
-                'Failed to establish a websocket connection'
+            self._state = STATE_STOPPED
+            self._error = errors.SlackSocketConnectionError(
+              'failed to establish a websocket connection'
             )
+            return
         log.warn('attempting to reconnect')
-        self._thread = Thread(target=self._open)
-        self._thread.start()
+        while self._state != STATE_CONNECTED:
+            self._handle_state()
