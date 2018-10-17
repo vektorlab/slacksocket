@@ -6,3 +6,6 @@ class SlackSocketEventNameError(NameError):
 
 class SlackSocketConnectionError(IOError):
     """ Unrecoverable error maintaining a websocket connection """
+
+class SlackSocketTimeoutError(IOError):
+    """ Timed out creating websocket connection """

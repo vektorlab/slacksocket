@@ -32,14 +32,15 @@ class SlackSocket(object):
      - slacktoken(str): token to authenticate with slack
      - translate(bool): yield events with human-readable names
         rather than id. default true
-     - event_filter(list): Slack event type(s) to filter by. Excluding a
+     - event_filter(list): Optional Slack event type(s) to filter by. Excluding a
             filter returns all slack events. See https://api.slack.com/events
             for a listing of valid event types.
+     - connect_timeout(int): Optional maximum amount of time to wait for connection to succeed.
     """
 
 
 
-    def __init__(self, slacktoken, translate=True, event_filters='all'):
+    def __init__(self, slacktoken, translate=True, event_filters='all', connect_timeout=0):
         if type(translate) != bool:
             raise TypeError('translate must be a boolean')
         self._validate_filters(event_filters)
@@ -49,6 +50,7 @@ class SlackSocket(object):
         # internal state
         self._state = STATE_INITIALIZING
         self._error = None
+        self._init_ts = time.time() # connection starting timestamp
 
         self._config = {
           'translate': translate,
@@ -56,6 +58,8 @@ class SlackSocket(object):
           'user': None,
           'team': None,
           'ws_url': None,
+          'connect_ts': time.time(), # last connection timestamp
+          'timeout': connect_timeout,
           }
 
         self._eventq = Queue.Queue()
@@ -81,6 +85,7 @@ class SlackSocket(object):
             self._handle_state()
 
     def state(self):
+        """ Return a text representation of current state """
         if self._state == STATE_STOPPED:
             return 'stopped'
         if self._state == STATE_INITIALIZING:
@@ -101,13 +106,23 @@ class SlackSocket(object):
             self.close()
 
     def _process_state(self):
+        if self._state != STATE_CONNECTED and self._timed_out():
+            raise errors.SlackSocketTimeoutError('connection timeout exceeded')
+
         if self._state == STATE_INITIALIZING:
-            self.team, self.user = self._auth_test()
+            self._config['team'], self._config['user'] = self._auth_test()
             self._state = STATE_INITIALIZED
             return
 
         if self._state == STATE_INITIALIZED:
-            ws_url = self._get_websocket_url()
+            try:
+                ws_url = self._get_websocket_url()
+            except errors.SlackAPIError as ex:
+                raise ex
+            except Exception as ex:
+                log.error(ex)
+                return
+
             self._state = STATE_CONNECTING
 
             self._thread = Thread(target=self._open, args=(ws_url,))
@@ -124,6 +139,14 @@ class SlackSocket(object):
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         self.close()
+
+    # return whether the current connection is timed out
+    def _timed_out(self):
+        if self._config['timeout'] == 0:
+            return False
+        if time.time() - self._init_ts < self._config['timeout']:
+            return False
+        return True
 
     def get_event(self, timeout=None):
         """
