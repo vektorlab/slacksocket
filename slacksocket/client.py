@@ -80,7 +80,20 @@ class SlackSocket(object):
         while self._state != STATE_CONNECTED:
             self._handle_state()
 
+    def state(self):
+        if self._state == STATE_STOPPED:
+            return 'stopped'
+        if self._state == STATE_INITIALIZING:
+            return 'initializing'
+        if self._state == STATE_INITIALIZED:
+            return 'initialized'
+        if self._state == STATE_CONNECTING:
+            return 'connecting'
+        if self._state == STATE_CONNECTED:
+            return 'connected'
+
     def _handle_state(self):
+        log.debug(f'handling state: {self.state()}')
         try:
             self._process_state()
         except Exception as ex:
@@ -95,6 +108,8 @@ class SlackSocket(object):
 
         if self._state == STATE_INITIALIZED:
             ws_url = self._get_websocket_url()
+            self._state = STATE_CONNECTING
+
             self._thread = Thread(target=self._open, args=(ws_url,))
             self._thread.daemon = True
             self._thread.start()
@@ -428,7 +443,8 @@ class SlackSocket(object):
                                          on_error=self._error_handler,
                                          on_open=self._open_handler,
                                          on_close=self._exit_handler)
-        self.ws.run_forever(sslopt={'cert_reqs': ssl.CERT_NONE})
+        self.ws.run_forever(ping_interval=10, ping_timeout=5,
+                sslopt={'cert_reqs': ssl.CERT_NONE})
 
     def _event_handler(self, ws, event_json):
         log.debug('event recieved: %s' % event_json)
@@ -455,13 +471,16 @@ class SlackSocket(object):
 
     def _exit_handler(self, ws):
         log.warn('websocket connection closed')
-        # Don't attempt reconnect if our last attempt was less than 30s ago
-        if (time.time() - self.connect_ts) < 30:
+
+        # Don't attempt reconnect if our last attempt was less than 10s ago
+        if (time.time() - self.connect_ts) < 10:
             self._state = STATE_STOPPED
             self._error = errors.SlackSocketConnectionError(
               'failed to establish a websocket connection'
             )
             return
+
         log.warn('attempting to reconnect')
+        self._state = STATE_INITIALIZED
         while self._state != STATE_CONNECTED:
             self._handle_state()

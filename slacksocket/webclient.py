@@ -20,7 +20,7 @@ class WebClient(requests.Session):
             raise ValueError(message)
 
         params['token'] = self._token
-        res = self.request(method, url, params=params)
+        res = self.request(method, url, params=params, timeout=6)
 
         try:
             res.raise_for_status()
