@@ -10,10 +10,12 @@ class SlackEvent(object):
     """
     Event received from the Slack RTM API
     params:
-     - event_obj(json object)
+     - event_obj(dict)
     attributes:
+     - event(dict): Event source
      - type(type): Slack event type
      - ts(float): UTC event timestamp
+     - metions(list): List of users mentioned in event text
     """
 
     def __init__(self, event_obj):
