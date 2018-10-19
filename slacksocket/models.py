@@ -50,7 +50,7 @@ class SlackMsg(object):
      - channel(str)
     attributes:
      - type: Slack event type
-     - ts: UTC time event was received 
+     - ts: UTC time event was received
     """
 
     def __init__(self, id, channel, text):

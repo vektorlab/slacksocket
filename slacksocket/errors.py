@@ -4,6 +4,9 @@ class APIError(RuntimeError):
 class ConfigError(NameError):
     """ Invalid name """
 
+class APINameError(NameError):
+    """ Unknown or invalid name """
+
 class ConnectionError(IOError):
     """ Unrecoverable error maintaining a websocket connection """
 

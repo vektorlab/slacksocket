@@ -181,8 +181,10 @@ class SlackSocket(object):
 
     def send_msg(self, text, channel_name=None, channel_id=None, confirm=True):
         """
-        Send a message via Slack RTM socket, returning the message object
-        after receiving a reply-to confirmation
+        Send a message to a channel or group via Slack RTM socket, returning
+        the message object after receiving a reply-to confirmation.
+
+        One of channel_name or channel_id must be provided
         """
         if not channel_name and not channel_id:
             raise Exception('One of channel_id or channel_name \
@@ -204,12 +206,31 @@ class SlackSocket(object):
         else:
             return msg
 
+    def send_im(self, text, user_name=None, user_id=None, confirm=True):
+        """
+        Send a direct message to a user via Slack RTM socket, returning
+        the message object after receiving a reply-to confirmation.
+
+        One of user_name or user_id must be provided
+        """
+        if not user_name and not user_id:
+            raise Exception('One of user_id or user_name \
+                             parameters must be given')
+        if user_name:
+            user_id = self._webclient.name_to_id('user', user_name)
+            if user_id == 'unknown':
+                raise errors.APIError(f'unknown user: {user_name}')
+
+        im_id = self._webclient.im_channel(user_id)
+
+        return self.send_msg(text, channel_id=im_id, confirm=confirm)
+
     def get_im_channel(self, user_name):
         """
-        Get a direct message channel to a particular user. Create
+        Return channel ID for direct message with a given user. Create
         one if it does not exist.
         """
-        user_id = self._find_user_id(user_name)
+        user_id = self._webclient.name_to_id('user', user_name)
         channel_info = self._find_channel(['ims'], 'user', user_id)
 
         if channel_info is None:

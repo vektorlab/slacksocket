@@ -66,10 +66,18 @@ class WebClient(requests.Session):
         """ Retrieve a fresh websocket url from slack api """
         return self._get(urls['rtm'])['url']
 
-    def open_im_channel(self, user_id):
-        """ Open an im channel with a user, returning the channel ID """
+    def im_channel(self, user_id):
+        """
+        Return channel ID for direct message with a given user. Create
+        one if it does not exist.
+        """
+        im = self._ims.match('user', user_id)
+        if im:
+            return im['id']
+
+        # open new im channel
         res = self._get(urls['im.open'], method='POST', user=user_id)
-        return result['channel']
+        return res['channel']
 
     def _load_users(self):
         """ update internal team users cache """
