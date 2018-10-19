@@ -104,7 +104,7 @@ class SlackSocket(object):
 
     def _process_state(self):
         if self._state != STATE_CONNECTED and self._timed_out():
-            raise errors.SlackSocketTimeoutError('connection timeout exceeded')
+            raise errors.TimeoutError('connection timeout exceeded')
 
         if self._state == STATE_INITIALIZING:
             self._webclient.login()
@@ -114,7 +114,7 @@ class SlackSocket(object):
         if self._state == STATE_INITIALIZED:
             try:
                 ws_url = self._webclient.rtm_url()
-            except errors.SlackAPIError as ex:
+            except errors.APIError as ex:
                 raise ex
             except Exception as ex:
                 log.error(ex)
@@ -246,11 +246,10 @@ class SlackSocket(object):
         if type(filters) != list:
             raise TypeError('filters must be given as a list')
 
-        for f in filters:
-            if f not in event_types:
-                raise errors.SlackSocketEventNameError('unknown event type %s\n \
-                             see https://api.slack.com/events' % filters)
-
+        invalid = [ f for f in filters if f not in event_types ]
+        if invalid:
+            raise errors.ConfigError('unknown event type %s\n \
+                         see https://api.slack.com/events' % filters)
 
     def _translate_event(self, event):
         """
@@ -324,7 +323,7 @@ class SlackSocket(object):
         # Don't attempt reconnect if our last attempt was less than 10s ago
         if (time.time() - self.connect_ts) < 10:
             self._state = STATE_STOPPED
-            self._error = errors.SlackSocketConnectionError(
+            self._error = errors.ConnectionError(
               'failed to establish a websocket connection'
             )
             return

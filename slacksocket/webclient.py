@@ -3,41 +3,10 @@ import requests
 from threading import Lock
 
 import slacksocket.errors as errors
-from .config import slackurl
+from .config import urls
+from .cache import ObjectCache
 
 log = logging.getLogger('slacksocket')
-
-class ObjectCache(object):
-    """ cached list of objects from Slack api """
-
-    def __init__(self):
-        self._lock = Lock()
-        self._items = []
-
-    def match(self, key, value):
-        """ lookup object by key and value """
-        self.lock()
-        try:
-            return self._match(key, value)
-        finally:
-            self.unlock()
-
-    def _match(self, k, v):
-        for o in self._items:
-            if o.get(k) == v:
-                return o
-        return {}
-
-    def update(self, items):
-        self.lock()
-        self._items = items
-        self.unlock()
-
-    def lock(self):
-        self._lock.acquire()
-
-    def unlock(self):
-        self._lock.release()
 
 class WebClient(requests.Session):
     """
@@ -60,7 +29,7 @@ class WebClient(requests.Session):
 
     def _get(self, url, method='GET', max_attempts=3, **params):
         if max_attempts <= 0:
-            raise errors.SlackAPIError('max retries exceeded')
+            raise errors.APIError('max retries exceeded')
 
         params['token'] = self._token
         res = self.request(method, url, params=params, timeout=5)
@@ -68,7 +37,7 @@ class WebClient(requests.Session):
         try:
             res.raise_for_status()
         except requests.exceptions.HTTPError as e:
-            raise errors.SlackAPIError(e)
+            raise errors.APIError(e)
 
         rj = res.json()
 
@@ -81,12 +50,12 @@ class WebClient(requests.Session):
             time.sleep(2)
             return self.get(url, method, max_attempts-1, **params)
         else:
-            raise errors.SlackAPIError('Error from slack api:\n%s' % res.text)
+            raise errors.APIError('Error from slack api:\n%s' % res.text)
 
     def login(self):
         """ Login and initialize WebClient """
         # perform API auth test to get our user and team
-        test = self._get(slackurl['test'])
+        test = self._get(urls['test'])
         self.team, self.user = test['team'], test['user']
 
         # populate user/channel cache
@@ -95,22 +64,22 @@ class WebClient(requests.Session):
 
     def rtm_url(self):
         """ Retrieve a fresh websocket url from slack api """
-        return self._get(slackurl['rtm'])['url']
+        return self._get(urls['rtm'])['url']
 
     def open_im_channel(self, user_id):
         """ Open an im channel with a user, returning the channel ID """
-        res = self._get(slackurl['im.open'], method='POST', user=user_id)
+        res = self._get(urls['im.open'], method='POST', user=user_id)
         return result['channel']
 
     def _load_users(self):
         """ update internal team users cache """
-        self._users.update(self._get(slackurl['users'])['members'])
+        self._users.update(self._get(urls['users'])['members'])
 
     def _load_channels(self):
         """ update internal team channels cache """
-        self._ims.update(self._get(slackurl['ims'])['ims'])
-        self._groups.update(self._get(slackurl['groups'])['groups'])
-        self._channels.update(self._get(slackurl['channels'])['channels'])
+        self._ims.update(self._get(urls['ims'])['ims'])
+        self._groups.update(self._get(urls['groups'])['groups'])
+        self._channels.update(self._get(urls['channels'])['channels'])
 
     def id_to_name(self, idtype, sid):
         """ Look up a user or channel name from a provided Slack ID """

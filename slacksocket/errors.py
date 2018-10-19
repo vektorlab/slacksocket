@@ -1,11 +1,11 @@
-class SlackAPIError(RuntimeError):
+class APIError(RuntimeError):
     """ Error response from Slack API """
 
-class SlackSocketEventNameError(NameError):
+class ConfigError(NameError):
     """ Invalid name """
 
-class SlackSocketConnectionError(IOError):
+class ConnectionError(IOError):
     """ Unrecoverable error maintaining a websocket connection """
 
-class SlackSocketTimeoutError(IOError):
-    """ Timed out creating websocket connection """
+class TimeoutError(IOError):
+    """ Timed out reaching Slack API """
