@@ -3,8 +3,7 @@ import sys
 import json
 from time import time
 
-translate_map = { ord(c): None for c in map(chr, list(range(256))) if not c.isalnum() }
-
+mentions_re = re.compile('<@(\w+)>')
 
 class SlackEvent(dict):
     """
@@ -26,7 +25,7 @@ class SlackEvent(dict):
 
         self.type = self.get('type')
         self.ts = self.get('ts', int(time()))
-        self.mentions = self._mentions(self.get('text', ''))
+        self.mentions = mentions_re.findall(self.get('text', ''))
 
         self.user = self.get('user')
         self.channel = self.get('channel')
@@ -39,17 +38,6 @@ class SlackEvent(dict):
     @property
     def json(self):
         return json.dumps(self)
-
-    def _mentions(self, text):
-        mentions = re.findall('<@\w+>', text)
-
-        if mentions and sys.version_info.major == 2:
-            return [ unicode(m).translate(translate_map) for m in mentions ]
-
-        if mentions and sys.version_info.major == 3:
-            return [ str(m).translate(translate_map) for m in mentions ]
-
-        return []
 
 
 class SlackMsg(object):
