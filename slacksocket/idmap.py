@@ -78,7 +78,7 @@ class Cache(object):
         """ lookup Slack name by ID """
         self.lock()
         try:
-            return self._items.get(sid, {})
+            return self._items.get(sid, 'unknown')
         finally:
             self.unlock()
 
@@ -89,6 +89,7 @@ class Cache(object):
             for k,v in self._items.items():
                 if v == name:
                     return k
+            return 'unknown'
         finally:
             self.unlock()
 

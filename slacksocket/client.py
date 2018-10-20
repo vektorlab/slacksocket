@@ -15,7 +15,7 @@ import slacksocket.errors as errors
 from .config import event_types
 from .models import SlackEvent, SlackMsg
 from .webclient import WebClient
-from .cache import IDMap
+from .idmap import IDMap
 
 log = logging.getLogger('slacksocket')
 
@@ -196,7 +196,7 @@ class SlackSocket(object):
         if confirm:
             # Wait for confirmation our message was received
             for e in self.events():
-                if e.event.get('reply_to') == self._send_id:
+                if e.get('reply_to') == self._send_id:
                     msg.sent = True
                     msg.ts = e.ts
                     return msg
@@ -262,19 +262,13 @@ class SlackSocket(object):
         """
         Translate all user and channel ids in an event to human-readable names
         """
-        if 'user' in event.event:
-            event.event['user'] = self._idmap.user_name(event.event['user'])
+        if event.user:
+            event.user = self._idmap.user_name(event.user)
 
-        if 'channel' in event.event:
-            chan = event.event['channel']
-            if isinstance(chan, dict):
-                # if channel is newly created, a channel object is returned from api
-                # instead of a channel id
-                event.event['channel'] = chan['name']
-            else:
-                event.event['channel'] = self._idmap.channel_name(chan)
+        if event.channel:
+            event.channel = self._idmap.channel_name(event.channel)
 
-        event.mentions = [ self._idmap.user_name(uid) for uid in event.mentions]
+        event.mentions = [ self._idmap.user_name(uid) for uid in event.mentions ]
 
         return event
 
@@ -308,7 +302,7 @@ class SlackSocket(object):
         event = SlackEvent(json.loads(event_json))
 
         if self._filter_event(event):
-            log.debug('ignoring filtered event: {}'.format(event.event))
+            log.debug('ignoring filtered event: {}'.format(event.json))
             return
 
         if self._config['translate']:

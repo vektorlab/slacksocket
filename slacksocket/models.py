@@ -6,31 +6,41 @@ from time import time
 translate_map = { ord(c): None for c in map(chr, list(range(256))) if not c.isalnum() }
 
 
-class SlackEvent(object):
+class SlackEvent(dict):
     """
     Event received from the Slack RTM API
     params:
      - event_obj(dict)
     attributes:
-     - event(dict): Event source
-     - type(type): Slack event type
+     - type(str): Slack event type
+     - user(str): Slack user ID (or name if translated), if applicable. default None.
+     - channel(str): Slack channel ID (or name if translated), if applicable. default None.
      - ts(float): UTC event timestamp
-     - metions(list): List of users mentioned in event text
+     - metions(list): List of Slack user IDs (or names if translated) mentioned in event text
     """
 
     def __init__(self, event_obj):
-        self.event = event_obj
+        super(SlackEvent, self).__init__()
+        self.update(event_obj)
         self.mentions = []
 
-        self.type = self.event.get('type')
-        self.ts = self.event.get('ts', int(time()))
-        self.mentions = self._get_mentions(self.event.get('text', ''))
+        self.type = self.get('type')
+        self.ts = self.get('ts', int(time()))
+        self.mentions = self._mentions(self.get('text', ''))
+
+        self.user = self.get('user')
+        self.channel = self.get('channel')
+
+        if isinstance(self.channel, dict):
+            # if channel is newly created, a channel object is returned from api
+            # instead of a channel id
+            self.channel = self.channel.get('id')
 
     @property
     def json(self):
-        return json.dumps(self.event)
+        return json.dumps(self)
 
-    def _get_mentions(self, text):
+    def _mentions(self, text):
         mentions = re.findall('<@\w+>', text)
 
         if mentions and sys.version_info.major == 2:
