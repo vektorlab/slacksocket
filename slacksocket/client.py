@@ -15,6 +15,7 @@ import slacksocket.errors as errors
 from .config import event_types
 from .models import SlackEvent, SlackMsg
 from .webclient import WebClient
+from .cache import IDMap
 
 log = logging.getLogger('slacksocket')
 
@@ -48,7 +49,7 @@ class SlackSocket(object):
         self.ws = None
 
         # internal state
-        self._state = STATE_INITIALIZING
+        self._state = STATE_INITIALIZED
         self._error = None
         self._init_ts = time.time() # connection starting timestamp
 
@@ -64,6 +65,7 @@ class SlackSocket(object):
         self._sendq = []
 
         self._webclient = WebClient(slacktoken)
+        self._idmap = IDMap(self._webclient)
 
         # trap signals for graceful shutdown
         signal.signal(signal.SIGINT, self._sig_handler)
@@ -105,11 +107,6 @@ class SlackSocket(object):
     def _process_state(self):
         if self._state != STATE_CONNECTED and self._timed_out():
             raise errors.TimeoutError('connection timeout exceeded')
-
-        if self._state == STATE_INITIALIZING:
-            self._webclient.login()
-            self._state = STATE_INITIALIZED
-            return
 
         if self._state == STATE_INITIALIZED:
             try:
@@ -190,7 +187,7 @@ class SlackSocket(object):
             raise Exception('One of channel_id or channel_name \
                              parameters must be given')
         if channel_name:
-            channel_id = self._webclient.name_to_id('channel', channel_name)
+            channel_id = self._idmap.name_to_id('channel', channel_name)
 
         self._send_id += 1
         msg = SlackMsg(self._send_id, channel_id, text)
@@ -216,33 +213,22 @@ class SlackSocket(object):
         if not user_name and not user_id:
             raise Exception('One of user_id or user_name \
                              parameters must be given')
-        if user_name:
-            user_id = self._webclient.name_to_id('user', user_name)
+        if not user_id:
+            user_id = self._idmap.user_id(user_name)
             if user_id == 'unknown':
                 raise errors.APIError(f'unknown user: {user_name}')
 
-        im_id = self._webclient.im_channel(user_id)
+        if not user_name:
+            user_name = self._idmap.user_name(user_id)
+            if user_name == 'unknown':
+                raise errors.APIError(f'unknown user id: {user_id}')
+
+        im_id = self._idmap.channel_id(user_name)
+        # create new im channel if one does not exist
+        if im_id == 'unknown':
+            im_id = self._webclient.open_im(user_id)
 
         return self.send_msg(text, channel_id=im_id, confirm=confirm)
-
-    def get_im_channel(self, user_name):
-        """
-        Return channel ID for direct message with a given user. Create
-        one if it does not exist.
-        """
-        user_id = self._webclient.name_to_id('user', user_name)
-        channel_info = self._find_channel(['ims'], 'user', user_id)
-
-        if channel_info is None:
-            channel = self._webclient.open_im_channel(user_id)
-
-        else:
-            (channel_type, matching) = channel_info
-            assert channel_type == 'ims'
-            assert len(matching) == 1
-            channel = matching[0]
-
-        return channel
 
     def close(self):
         self._state = STATE_STOPPED
@@ -277,7 +263,7 @@ class SlackSocket(object):
         Translate all user and channel ids in an event to human-readable names
         """
         if 'user' in event.event:
-            event.event['user'] = self._webclient.id_to_name('user', event.event['user'])
+            event.event['user'] = self._idmap.user_name(event.event['user'])
 
         if 'channel' in event.event:
             chan = event.event['channel']
@@ -286,9 +272,9 @@ class SlackSocket(object):
                 # instead of a channel id
                 event.event['channel'] = chan['name']
             else:
-                event.event['channel'] = self._webclient.id_to_name('channel', chan)
+                event.event['channel'] = self._idmap.channel_name(chan)
 
-        event.mentions = [ self._webclient.id_to_name(uid) for uid in event.mentions]
+        event.mentions = [ self._idmap.user_name(uid) for uid in event.mentions]
 
         return event
 

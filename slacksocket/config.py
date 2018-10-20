@@ -3,10 +3,8 @@ slack = 'https://slack.com/api/'
 urls = { 'test': slack + 'auth.test',
          'rtm': slack + 'rtm.start',
          'users': slack + 'users.list',
-         'channels': slack + 'channels.list',
-         'groups': slack + 'groups.list',
-         'ims': slack + 'im.list',
-         'im.open': slack + 'im.open' }
+         'im.open': slack + 'im.open',
+         'convos': slack + 'conversations.list' }
 
 # event types as given in https://api.slack.com/events
 event_types = [ 'hello',
