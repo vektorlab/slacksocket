@@ -17,9 +17,18 @@ class WebClient(requests.Session):
         self._token = token
         super(WebClient, self).__init__()
 
-        # perform API auth test to get our user and team
+    def login(self):
+        """ perform API auth test returning user and team name """
         test = self._get(urls['test'])
-        self.team, self.user = test['team'], test['user']
+        return test['team'], test['user']
+
+    def rtm_url(self):
+        """ Retrieve a fresh websocket url from slack api """
+        return self._get(urls['rtm'])['url']
+
+    def open_im(self, user_id):
+        res = self._post(urls['im.open'], user=user_id)
+        return res['channel']
 
     def _get(self, url, **params):
         return self._do(url, **params)
@@ -62,11 +71,3 @@ class WebClient(requests.Session):
             yield res
             if not params['cursor']:
                 return
-
-    def rtm_url(self):
-        """ Retrieve a fresh websocket url from slack api """
-        return self._get(urls['rtm'])['url']
-
-    def open_im(self, user_id):
-        res = self._post(urls['im.open'], user=user_id)
-        return res['channel']

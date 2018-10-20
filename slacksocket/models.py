@@ -16,16 +16,18 @@ class SlackEvent(dict):
      - channel(str): Slack channel ID (or name if translated), if applicable. default None.
      - ts(float): UTC event timestamp
      - metions(list): List of Slack user IDs (or names if translated) mentioned in event text
+     - mentions_me(bool): Whether this message @mentions the logged in bot/user
     """
 
     def __init__(self, event_obj):
         super(SlackEvent, self).__init__()
         self.update(event_obj)
-        self.mentions = []
 
         self.type = self.get('type')
         self.ts = self.get('ts', int(time()))
+
         self.mentions = mentions_re.findall(self.get('text', ''))
+        self.mentions_me = False
 
         self.user = self.get('user')
         self.channel = self.get('channel')

@@ -49,7 +49,7 @@ class SlackSocket(object):
         self.ws = None
 
         # internal state
-        self._state = STATE_INITIALIZED
+        self._state = STATE_INITIALIZING
         self._error = None
         self._init_ts = time.time() # connection starting timestamp
 
@@ -107,6 +107,11 @@ class SlackSocket(object):
     def _process_state(self):
         if self._state != STATE_CONNECTED and self._timed_out():
             raise errors.TimeoutError('connection timeout exceeded')
+
+        if self._state == STATE_INITIALIZING:
+            self.team, self.user = self._webclient.login()
+            self._idmap.refresh()
+            self._state = STATE_INITIALIZED
 
         if self._state == STATE_INITIALIZED:
             try:
@@ -187,7 +192,7 @@ class SlackSocket(object):
             raise Exception('One of channel_id or channel_name \
                              parameters must be given')
         if channel_name:
-            channel_id = self._idmap.name_to_id('channel', channel_name)
+            channel_id = self._idmap.channel_id(channel_name)
 
         self._send_id += 1
         msg = SlackMsg(self._send_id, channel_id, text)
@@ -269,6 +274,9 @@ class SlackSocket(object):
             event.channel = self._idmap.channel_name(event.channel)
 
         event.mentions = [ self._idmap.user_name(uid) for uid in event.mentions ]
+
+        if self.user in event.mentions:
+            event.mentions_me = True
 
         return event
 

@@ -18,7 +18,6 @@ class IDMap(object):
         self._wc = webclient
         self._users = Cache()
         self._channels = Cache()
-        self.refresh()
 
     def refresh(self):
         self._users.update(self._user_gen)
