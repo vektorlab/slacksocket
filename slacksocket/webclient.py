@@ -4,6 +4,8 @@ from threading import Lock
 
 import slacksocket.errors as errors
 from .config import urls
+from .directory import Directory
+from .models import User
 
 log = logging.getLogger('slacksocket')
 
@@ -18,9 +20,10 @@ class WebClient(requests.Session):
         super(WebClient, self).__init__()
 
     def login(self):
-        """ perform API auth test returning user and team name """
+        """ perform API auth test returning user and team """
         test = self._get(urls['test'])
-        return test['team'], test['user']
+        user = User({ 'name': test['user'], 'id': test['user_id']})
+        return test['team'], user
 
     def rtm_url(self):
         """ Retrieve a fresh websocket url from slack api """

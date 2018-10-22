@@ -15,7 +15,7 @@ import slacksocket.errors as errors
 from .config import event_types
 from .models import SlackEvent, SlackMsg
 from .webclient import WebClient
-from .idmap import IDMap
+from .directory import Directory
 
 log = logging.getLogger('slacksocket')
 
@@ -31,8 +31,6 @@ class SlackSocket(object):
     Messaging API
     params:
      - slacktoken(str): token to authenticate with slack
-     - translate(bool): yield events with human-readable names
-        rather than id. default true
      - event_filter(list): Optional Slack event type(s) to filter by. Excluding a
             filter returns all slack events. See https://api.slack.com/events
             for a listing of valid event types.
@@ -41,9 +39,7 @@ class SlackSocket(object):
 
 
 
-    def __init__(self, slacktoken, translate=True, event_filters='all', connect_timeout=0):
-        if type(translate) != bool:
-            raise TypeError('translate must be a boolean')
+    def __init__(self, slacktoken, event_filters='all', connect_timeout=0):
         self._validate_filters(event_filters)
 
         self.ws = None
@@ -54,7 +50,6 @@ class SlackSocket(object):
         self._init_ts = time.time() # connection starting timestamp
 
         self._config = {
-          'translate': translate,
           'filters': event_filters,
           'ws_url': None,
           'connect_ts': time.time(), # last connection timestamp
@@ -65,7 +60,7 @@ class SlackSocket(object):
         self._sendq = []
 
         self._webclient = WebClient(slacktoken)
-        self._idmap = IDMap(self._webclient)
+        self._sdir = Directory(self._webclient)
 
         # trap signals for graceful shutdown
         signal.signal(signal.SIGINT, self._sig_handler)
@@ -110,7 +105,7 @@ class SlackSocket(object):
 
         if self._state == STATE_INITIALIZING:
             self.team, self.user = self._webclient.login()
-            self._idmap.refresh()
+            self._sdir.refresh()
             self._state = STATE_INITIALIZED
 
         if self._state == STATE_INITIALIZED:
@@ -181,21 +176,19 @@ class SlackSocket(object):
                 done = True
                 self.close()
 
-    def send_msg(self, text, channel_name=None, channel_id=None, confirm=True):
+    def send_msg(self, text, channel, confirm=True):
         """
         Send a message to a channel or group via Slack RTM socket, returning
-        the message object after receiving a reply-to confirmation.
+        the resulting message object
 
-        One of channel_name or channel_id must be provided
+        params:
+         - text(str): Message text to send
+         - channel(Channel): Target channel
+         - confirm(bool): If True, wait for a reply-to confirmation before returning.
         """
-        if not channel_name and not channel_id:
-            raise Exception('One of channel_id or channel_name \
-                             parameters must be given')
-        if channel_name:
-            channel_id = self._idmap.channel_id(channel_name)
 
         self._send_id += 1
-        msg = SlackMsg(self._send_id, channel_id, text)
+        msg = SlackMsg(self._send_id, channel.id, text)
         self.ws.send(msg.json)
 
         if confirm:
@@ -208,32 +201,9 @@ class SlackSocket(object):
         else:
             return msg
 
-    def send_im(self, text, user_name=None, user_id=None, confirm=True):
-        """
-        Send a direct message to a user via Slack RTM socket, returning
-        the message object after receiving a reply-to confirmation.
-
-        One of user_name or user_id must be provided
-        """
-        if not user_name and not user_id:
-            raise Exception('One of user_id or user_name \
-                             parameters must be given')
-        if not user_id:
-            user_id = self._idmap.user_id(user_name)
-            if user_id == 'unknown':
-                raise errors.APIError(f'unknown user: {user_name}')
-
-        if not user_name:
-            user_name = self._idmap.user_name(user_id)
-            if user_name == 'unknown':
-                raise errors.APIError(f'unknown user id: {user_id}')
-
-        im_id = self._idmap.channel_id(user_name)
-        # create new im channel if one does not exist
-        if im_id == 'unknown':
-            im_id = self._webclient.open_im(user_id)
-
-        return self.send_msg(text, channel_id=im_id, confirm=confirm)
+    def lookup_channel(self, match):
+        """ Return Channel object for a given Slack ID or name """
+        return self._sdir.channel(match)
 
     def close(self):
         self._state = STATE_STOPPED
@@ -263,20 +233,18 @@ class SlackSocket(object):
             raise errors.ConfigError('unknown event type %s\n \
                          see https://api.slack.com/events' % filters)
 
-    def _translate_event(self, event):
-        """
-        Translate all user and channel ids in an event to human-readable names
-        """
-        if event.user:
-            event.user = self._idmap.user_name(event.user)
+    def _process_event(self, event):
+        """ Extend event object with User and Channel objects """
+        if event.get('user'):
+            event.user = self._sdir.user(event.get('user'))
 
-        if event.channel:
-            event.channel = self._idmap.channel_name(event.channel)
+        if event.get('channel'):
+            event.channel = self._sdir.channel(event.get('channel'))
 
-        event.mentions = [ self._idmap.user_name(uid) for uid in event.mentions ]
-
-        if self.user in event.mentions:
+        if self.user.id in event.mentions:
             event.mentions_me = True
+
+        event.mentions = [ self._sdir.user(uid) for uid in event.mentions ]
 
         return event
 
@@ -313,10 +281,7 @@ class SlackSocket(object):
             log.debug('ignoring filtered event: {}'.format(event.json))
             return
 
-        if self._config['translate']:
-            event = self._translate_event(event)
-
-        self._eventq.put(event)
+        self._eventq.put(self._process_event(event))
 
     def _open_handler(self, ws):
         log.info('websocket connection established')
