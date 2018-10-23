@@ -37,8 +37,6 @@ class SlackSocket(object):
      - connect_timeout(int): Optional maximum amount of time to wait for connection to succeed.
     """
 
-
-
     def __init__(self, slacktoken, event_filters='all', connect_timeout=0):
         self._validate_filters(event_filters)
 
@@ -69,14 +67,6 @@ class SlackSocket(object):
         # wait for websocket connection to be established before returning
         while self._state != STATE_CONNECTED:
             self._handle_state()
-
-    def user(self):
-        """ Return the currently logged in user """
-        return self._webclient.user
-
-    def team(self):
-        """ Return the currently logged in team """
-        return self._webclient.team
 
     def state(self):
         """ Return a text representation of current state """
@@ -133,14 +123,6 @@ class SlackSocket(object):
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         self.close()
-
-    # return whether the current connection is timed out
-    def _timed_out(self):
-        if self._config['timeout'] == 0:
-            return False
-        if time.time() - self._init_ts < self._config['timeout']:
-            return False
-        return True
 
     def get_event(self, timeout=None):
         """
@@ -201,6 +183,10 @@ class SlackSocket(object):
         else:
             return msg
 
+    def lookup_user(self, match):
+        """ Return User object for a given Slack ID or name """
+        return self._sdir.user(match)
+
     def lookup_channel(self, match):
         """ Return Channel object for a given Slack ID or name """
         return self._sdir.channel(match)
@@ -216,6 +202,14 @@ class SlackSocket(object):
     #######
     # Internal Methods
     #######
+
+    # return whether the current connection is timed out
+    def _timed_out(self):
+        if self._config['timeout'] == 0:
+            return False
+        if time.time() - self._init_ts < self._config['timeout']:
+            return False
+        return True
 
     def _sig_handler(self, signal, frame):
         log.debug("caugh signal, exiting")
