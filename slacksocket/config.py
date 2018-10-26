@@ -60,3 +60,15 @@ event_types = [ 'hello',
                 'accounts_changed',
                 'user_typing',
                 'team_migration_started' ]
+
+def validate_filters(self, filters):
+    if filters == 'all':
+        return
+
+    if type(filters) != list:
+        raise TypeError('filters must be given as a list')
+
+    invalid = [ f for f in filters if f not in event_types ]
+    if invalid:
+        raise errors.ConfigError('unknown event types: %s\n \
+                     see https://api.slack.com/events' % filters)

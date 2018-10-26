@@ -63,7 +63,6 @@ class SlackEvent(dict):
     def json(self):
         return json.dumps(self)
 
-
 class SlackMsg(object):
     """
     Slack default formatted message capable of being sent via the RTM API

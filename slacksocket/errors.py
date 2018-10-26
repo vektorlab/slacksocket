@@ -12,3 +12,6 @@ class ConnectionError(IOError):
 
 class TimeoutError(IOError):
     """ Timed out reaching Slack API """
+
+class ExitError(RuntimeError):
+    """ User-requested exit """
