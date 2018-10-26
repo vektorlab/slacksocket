@@ -35,16 +35,22 @@ class SlackSocket(object):
 
     def __init__(self, slacktoken, connect_timeout=0):
         self.ws = None
+
+        # internal state
+        self._internalq = Queue.Queue() # internal event queue
         self._state = None
         self._error = None
 
-        self._config = {
-          'ws_url': None,
-          'connect_ts': time.time(), # last connection timestamp
-          }
+        # stats tracking
+        self._stats = {
+          'events_recieved': 0,
+          'events_dropped': 0,
+          'messages_sent': 0,
+          'connected_since': 0
+        }
+
         self.timeout = connect_timeout
 
-        self._internalq = Queue.Queue() # internal event queue
         self._eventq = Queue.Queue()
         self._sendq = []
 
@@ -69,6 +75,13 @@ class SlackSocket(object):
     def __exit__(self, exc_type, exc_value, exc_traceback):
         self.close()
 
+    def stats(self):
+        """
+        Return a dictionary of SlackSocket stats, including the number
+        of messages sent and recieved
+        """
+        return self._stats
+
     def get_event(self, timeout=None, event_types=[]):
         """
         Return a single event object or block until an event is
@@ -85,9 +98,12 @@ class SlackSocket(object):
         if isinstance(e, Exception):
             raise e
 
+        self._stats['events_recieved'] += 1
         if event_types and e.type not in event_types:
-            timeout -= time.time() - start
+            if timeout:
+                timeout -= time.time() - start
             log.debug('ignoring filtered event: {}'.format(e.json))
+            self._stats['events_dropped'] += 1
             return self.get_event(timeout, event_types)
 
         return e
@@ -124,6 +140,7 @@ class SlackSocket(object):
         self._send_id += 1
         msg = SlackMsg(self._send_id, channel.id, text)
         self.ws.send(msg.json)
+        self._stats['messages_sent'] += 1
 
         if confirm:
             # Wait for confirmation our message was received
@@ -230,7 +247,7 @@ class SlackSocket(object):
             if self._state == STATE_CONNECTED:
                 log.info('websocket connection established')
                 conn_start = None
-                self.connect_ts = time.time()
+                self._stats['connected_since'] = time.time()
 
         log.debug('worker stopped')
 
