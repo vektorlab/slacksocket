@@ -16,9 +16,17 @@ pip install slacksocket
 ```python
 from slacksocket import SlackSocket
 
-s = SlackSocket('<slack-token>',translate=True) # translate will lookup and replace user and channel IDs with their human-readable names. default true. 
+s = SlackSocket('<slack-token>')
 
+# get a single event
+e = s.get_event()
+
+# get all events
 for event in s.events():
+    print(event.json)
+
+# or filter events based on type 
+for event in s.events('message', 'user_typing'):
     print(event.json)
 ```
 
@@ -27,8 +35,9 @@ for event in s.events():
 from slacksocket import SlackSocket
 
 s = SlackSocket('<slack-token>')
+channel = s.lookup_channel('channel-name')
 
-msg = s.send_msg('Hello there', channel_name='channel-name') 
+msg = s.send_msg('Hello there', channel)
 print(msg.sent)
 ```
 

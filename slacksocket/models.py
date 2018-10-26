@@ -38,7 +38,7 @@ class SlackEvent(dict):
      - user(User): Slack User object, if applicable. default None.
      - channel(Channel): Slack Channel object, if applicable. default None.
      - ts(float): UTC event timestamp
-     - metions(list): List of Slack user IDs (or names if translated) mentioned in event text
+     - metions(list): List of Slack User objects mentioned in event text
      - mentions_me(bool): Whether this message @mentions the logged in bot/user
     """
 
