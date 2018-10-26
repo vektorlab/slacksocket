@@ -6,6 +6,8 @@ Python interface to the Slack Real Time Messaging(RTM) API
 
 ## Install
 
+*note*: v1.x only supports Python3 at this time is not backward compatible with earlier library versions
+
 ```bash
 pip install slacksocket
 ```
