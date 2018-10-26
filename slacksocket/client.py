@@ -104,7 +104,7 @@ class SlackSocket(object):
                 timeout -= time.time() - start
             log.debug('ignoring filtered event: {}'.format(e.json))
             self._stats['events_dropped'] += 1
-            return self.get_event(timeout, etypes)
+            return self.get_event(*etypes, timeout=timeout)
 
         return e
 

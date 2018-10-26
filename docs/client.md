@@ -76,6 +76,12 @@ Lookup a Slack channel by ID or name
 
 **Returns** (slacksocket.models.Channel): Matching Channel object
 
+## stats
+
+Return a dictionary of SlackSocket stats, including the number of messages sent and recieved
+
+**Returns** (dict): dictionary of SlackSocket stats
+
 # SlackEvent
 
 Event object received from SlackSocket

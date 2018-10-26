@@ -12,6 +12,25 @@ pip install slacksocket
 
 ## Usage
 
+### Example
+
+Example usage for a simple time bot:
+```python
+from datetime import datetime
+from slacksocket import SlackSocket
+
+s = SlackSocket('<slack-token>')
+
+while True:
+    event = s.get_event('message') # filter only for events of type 'message'
+    if not event.mentions_me: # doesn't mention our bot, ignore
+        continue
+    if 'what time is it' in event.get('text'):
+        text = f'@{event.user} it is currently {datetime.now()}'
+        s.send_msg(text, event.channel) # respond back to origin channel
+
+```
+
 ### Retrieving events/messages
 ```python
 from slacksocket import SlackSocket
