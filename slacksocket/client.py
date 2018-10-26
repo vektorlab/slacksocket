@@ -82,16 +82,16 @@ class SlackSocket(object):
         """
         return self._stats
 
-    def get_event(self, timeout=None, event_types=[]):
+    def get_event(self, *etypes, timeout=None):
         """
         Return a single event object or block until an event is
         received and return it.
-         - timeout(int): Max time, in seconds, to block waiting for new event
-         - event_types(list): If defined, Slack event type(s) not matching
+         - etypes(str): If defined, Slack event type(s) not matching
            the filter will be ignored. See https://api.slack.com/events for
            a listing of valid event types.
+         - timeout(int): Max time, in seconds, to block waiting for new event
         """
-        self._validate_filters(event_types)
+        self._validate_etypes(*etypes)
         start = time.time()
         e = self._eventq.get(timeout=timeout)
 
@@ -99,29 +99,29 @@ class SlackSocket(object):
             raise e
 
         self._stats['events_recieved'] += 1
-        if event_types and e.type not in event_types:
+        if etypes and e.type not in etypes:
             if timeout:
                 timeout -= time.time() - start
             log.debug('ignoring filtered event: {}'.format(e.json))
             self._stats['events_dropped'] += 1
-            return self.get_event(timeout, event_types)
+            return self.get_event(timeout, etypes)
 
         return e
 
-    def events(self, idle_timeout=None, event_types=[]):
+    def events(self, *etypes, idle_timeout=None):
         """
         returns a blocking generator yielding Slack event objects
         params:
-         - idle_timeout(int): optional maximum amount of time (in seconds)
-           to wait between events before returning
-         - event_types(list): If defined, Slack event type(s) not matching
+         - etypes(str): If defined, Slack event type(s) not matching
            the filter will be ignored. See https://api.slack.com/events for
            a listing of valid event types.
+         - idle_timeout(int): optional maximum amount of time (in seconds)
+           to wait between events before returning
         """
 
         while self._state != STATE_STOPPED:
             try:
-                yield self.get_event(idle_timeout, event_types)
+                yield self.get_event(*etypes, timeout=idle_timeout)
             except Queue.Empty:
                 log.info('idle timeout reached for events()')
                 return
@@ -192,17 +192,14 @@ class SlackSocket(object):
         return event
 
     @staticmethod
-    def _validate_filters(filters):
-        if not filters:
+    def _validate_etypes(*etypes):
+        if not etypes:
             return
 
-        if type(filters) != list:
-            raise TypeError('filters must be given as a list')
-
-        invalid = [ f for f in filters if f not in event_types ]
+        invalid = [ f for f in etypes if f not in event_types ]
         if invalid:
             raise errors.ConfigError('unknown event type %s\n \
-                         see https://api.slack.com/events' % filters)
+                         see https://api.slack.com/events' % invalid)
 
     #######
     # Websocket Handlers
