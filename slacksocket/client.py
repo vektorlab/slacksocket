@@ -268,16 +268,16 @@ class SlackSocket(object):
                 sslopt={'cert_reqs': ssl.CERT_NONE})
         self._set_state(STATE_INITIALIZED)
 
-    def _event_handler(self, ws, event_json):
+    def _event_handler(self, event_json):
         log.debug('event recieved: %s' % event_json)
         event = SlackEvent(json.loads(event_json))
         self._eventq.put(self._process_event(event))
 
-    def _open_handler(self, ws):
+    def _open_handler(self):
         self._set_state(STATE_CONNECTED)
 
-    def _error_handler(self, ws, error):
+    def _error_handler(self, error):
         log.critical('websocket error:\n %s' % error)
 
-    def _exit_handler(self, ws):
+    def _exit_handler(self):
         log.warn('websocket connection closed')
